@@ -7,16 +7,16 @@ Build-Depends:
 Build-Depends-Arch:
  bc,
  bison,
- binutils-riscv64-linux-gnu,
+ binutils-riscv64-linux-gnu:any,
  cpio,
  device-tree-compiler,
  flex,
  gcc-riscv64-linux-gnu,
  kmod,
- libelf-dev,
- libssl-dev,
+ libelf-dev:native,
+ libssl-dev:native,
  pahole,
- python3,
+ python3:any,
  rsync,
  xz-utils
 Standards-Version: 4.7.0
