@@ -15,7 +15,7 @@ Last-Update: 2026-04-15
  dtb-$(CONFIG_ARCH_SOPHGO) += sg2042-evb-v2.dtb
 --- /dev/null
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-milkv-duo256m.dts
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,100 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 +/*
 + * SG2002 Milk-V Duo 256M device tree
