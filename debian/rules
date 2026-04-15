@@ -32,6 +32,9 @@ override_dh_auto_install-arch:
 	krel="$$(cat "$(BUILD_DIR)/include/config/kernel.release")"; \
 	mkdir -p "$(PACKAGE_DIR)$(INSTALL_DIR)"; \
 	cp "$(BUILD_DIR)/arch/riscv/boot/Image" "$(PACKAGE_DIR)$(INSTALL_DIR)/Image"; \
+	cp "$(BUILD_DIR)/System.map" "$(PACKAGE_DIR)$(INSTALL_DIR)/System.map"; \
+	cp "$(BUILD_DIR)/.config" "$(PACKAGE_DIR)$(INSTALL_DIR)/config"; \
+	printf '%s\n' "$$krel" > "$(PACKAGE_DIR)$(INSTALL_DIR)/kernel.release"; \
 	if [ -d "$(BUILD_DIR)/arch/riscv/boot/dts" ]; then \
 		cp -a "$(BUILD_DIR)/arch/riscv/boot/dts" "$(PACKAGE_DIR)$(INSTALL_DIR)/"; \
 	fi; \

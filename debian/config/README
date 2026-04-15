@@ -1,6 +1,21 @@
-Add the board kernel configuration here as:
+The Debian recipe currently builds from:
 
   debian/config/sg2002-milkv-duo256m.config
 
-The current `debian/rules` expects that file and will stop with a clear
-error until it exists.
+That file is a temporary generated seed derived from:
+
+  /root/uboot/sg2002/cv180x.riscv64.config
+
+with the Alpine-specific localversion replaced by a Debian board suffix.
+
+The intended long-term source of truth is:
+
+  debian/config/base/milkv-duo_defconfig
+  debian/config/fragments/debian-common.fragment
+  debian/config/fragments/initramfs.fragment
+  debian/config/fragments/sg2002-soc.fragment
+  debian/config/fragments/sg2002-milkv-duo256m.fragment
+
+`debian-common.fragment` should eventually be generated from the intersection
+of Debian kernel configs across architectures rather than inherited from the
+Alpine draft. `debian/scripts/update-config.sh` is provided for that workflow.

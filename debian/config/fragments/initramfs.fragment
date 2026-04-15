@@ -1,0 +1,11 @@
+# Generic initramfs boot requirements.
+#
+# Keep this fragment narrowly focused on symbols required to boot a Debian-style
+# initramfs. Distro-wide runtime policy belongs in debian-common.fragment, and
+# board-specific choices belong in sg2002-milkv-duo256m.fragment.
+
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_RD_GZIP=y
+CONFIG_RD_XZ=y
+CONFIG_RD_LZ4=y
+CONFIG_RD_ZSTD=y

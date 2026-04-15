@@ -1,1 +1,2 @@
 # Add DTS and related board support patches here with `dpkg-source --commit`.
+0001-riscv-dts-sophgo-add-sg2002-milkv-duo256m.patch

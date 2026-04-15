@@ -1,0 +1,72 @@
+# Baseline CV180x / SG200x SoC fragment.
+#
+# Merge this on top of:
+# - debian/config/base/milkv-duo_defconfig
+# - debian-common.fragment
+#
+# Intent:
+# - keep SoC/family bring-up here
+# - keep Debian-wide distro policy in debian-common.fragment
+# - keep board-specific choices in sg2002-milkv-duo256m.fragment
+#
+# This is intentionally conservative. It enables the SoC-family blocks that are
+# visible in the known-good Milk-V Duo config, while avoiding board policy such
+# as gadget functions, spidev, rootfs filesystems, or debug-only options.
+
+CONFIG_ARCH_SOPHGO=y
+CONFIG_ERRATA_THEAD=y
+
+# CV180x-class systems benefit from CMA for multimedia and DMA-heavy devices.
+CONFIG_CMA=y
+CONFIG_DMA_CMA=y
+
+# Core SoC buses and integrated IP blocks.
+CONFIG_PINCTRL=y
+CONFIG_PINCTRL_SOPHGO_CV1800B=y
+CONFIG_PINCTRL_SOPHGO_SG2002=y
+CONFIG_GPIOLIB=y
+CONFIG_GPIO_DWAPB=y
+
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_8250_NR_UARTS=5
+CONFIG_SERIAL_8250_RUNTIME_UARTS=5
+CONFIG_SERIAL_8250_DW=y
+CONFIG_SERIAL_EARLYCON_RISCV_SBI=y
+
+CONFIG_I2C=y
+CONFIG_I2C_MUX=y
+CONFIG_I2C_DESIGNWARE_CORE=y
+
+CONFIG_SPI=y
+CONFIG_SPI_DESIGNWARE=y
+CONFIG_SPI_DW_MMIO=y
+
+CONFIG_MMC=y
+CONFIG_MMC_SDHCI=y
+CONFIG_MMC_SDHCI_PLTFM=y
+CONFIG_MMC_SDHCI_OF_DWCMSHC=y
+
+CONFIG_STMMAC_ETH=y
+CONFIG_MDIO_BUS_MUX_MMIOREG=y
+
+CONFIG_DMADEVICES=y
+CONFIG_DW_AXI_DMAC=y
+CONFIG_SOPHGO_CV1800B_DMAMUX=y
+
+CONFIG_MAILBOX=y
+CONFIG_CV1800_MBOX=y
+
+CONFIG_CLK_SOPHGO_CV1800=y
+CONFIG_SOPHGO_CV1800_RTCSYS=y
+
+CONFIG_WATCHDOG=y
+CONFIG_THERMAL=y
+CONFIG_POWER_RESET=y
+CONFIG_RTC_CLASS=y
+
+# USB controller support belongs to the SoC family; gadget policy does not.
+CONFIG_USB=y
+CONFIG_USB_OTG=y
+CONFIG_USB_ROLE_SWITCH=y
+CONFIG_USB_DWC2=m

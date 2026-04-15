@@ -1,0 +1,6 @@
+# Placeholder for Debian-wide common config generated from the intersection of
+# Debian kernel configs across architectures.
+#
+# Replace this file with a generated fragment once the Debian kernel packaging
+# source is imported for reference. Keep board- and SoC-specific symbols in the
+# dedicated fragments below rather than in this file.

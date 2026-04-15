@@ -2,6 +2,8 @@ linux-sg2002-milkv-duo256m (7.0-1) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
-  * Reserve placeholder locations for board config and DTS patches.
+  * Seed the board kernel config from the local sg2002 Alpine packaging draft.
+  * Add an initial DTS patch for the SG2002 Milk-V Duo 256M board.
+  * Add a Debian-oriented config fragment scaffold for future config refreshes.
 
  -- Packaging Maintainer <maintainer@example.com>  Wed, 15 Apr 2026 10:00:00 +0900

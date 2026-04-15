@@ -28,5 +28,17 @@ imported source tree with:
 
   dpkg-source --commit
 
-This recipe is not expected to build until the board config and DTS patches
-are added.
+The initial board config and DTS patch were seeded from the local
+`/root/uboot/sg2002` Alpine package draft and translated into Debian package
+inputs.
+
+The checked-in `debian/config/sg2002-milkv-duo256m.config` is only a temporary
+generated seed. The intended long-term source of truth is:
+
+  debian/config/base/milkv-duo_defconfig
+  debian/config/fragments/debian-common.fragment
+  debian/config/fragments/*.fragment
+
+You can regenerate the board config from those inputs with:
+
+  debian/scripts/update-config.sh /path/to/linux
