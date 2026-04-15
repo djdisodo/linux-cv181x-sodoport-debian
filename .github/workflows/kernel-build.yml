@@ -51,6 +51,11 @@ jobs:
           git clone "$GITHUB_WORKSPACE" "$workdir"
           cd "$workdir"
           git checkout -b latest
+          if ! git show-ref --verify --quiet refs/heads/upstream/latest; then
+            empty_tree="$(git hash-object -t tree /dev/null)"
+            empty_commit="$(printf '%s\n' "Bootstrap upstream/latest" | git commit-tree "$empty_tree")"
+            git branch upstream/latest "$empty_commit"
+          fi
           version="$(dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$//')"
           mkdir -p "$tarball_dir"
           uscan --check-dirname-level 0 --download-current-version --rename --destdir "$tarball_dir"
