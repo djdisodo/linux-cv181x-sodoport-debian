@@ -1,0 +1,16 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Linux kernel
+Source: https://cdn.kernel.org/pub/linux/kernel/
+
+Files: *
+Copyright: 1991-2026 Linux kernel contributors
+License: GPL-2
+
+Files: debian/*
+Copyright: 2026 Packaging Maintainer <maintainer@example.com>
+License: GPL-2
+
+License: GPL-2
+ This package is licensed under version 2 of the GNU General Public License.
+ On Debian systems, the full text is available in
+ /usr/share/common-licenses/GPL-2.

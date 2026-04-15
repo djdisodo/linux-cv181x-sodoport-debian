@@ -1,0 +1,15 @@
+*.build
+*.buildinfo
+*.changes
+*.deb
+*.debian.tar.*
+*.dsc
+*.orig.tar.*
+*.udeb
+*~
+.pc/
+debian/.debhelper/
+debian/build/
+debian/debhelper-build-stamp
+debian/files
+debian/linux-image-sg2002-milkv-duo256m/

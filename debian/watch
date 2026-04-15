@@ -1,0 +1,4 @@
+version=4
+opts="pgpmode=none,repack,compression=xz,dversionmangle=s/-[^-]*$//;s/\+.*//,uversionmangle=s/-rc/~rc/" \
+  https://cdn.kernel.org/pub/linux/kernel/v7.x/ \
+  linux-@ANY_VERSION@\.tar\.xz

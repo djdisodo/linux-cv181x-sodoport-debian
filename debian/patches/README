@@ -1,0 +1,7 @@
+Place downstream DTS and board-enablement patches in this directory.
+
+Preferred maintainer workflow:
+
+1. Import the upstream source tree with `gbp import-orig`.
+2. Make changes in the generated `latest` branch.
+3. Record the patch with `dpkg-source --commit`.

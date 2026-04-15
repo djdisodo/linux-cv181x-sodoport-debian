@@ -1,0 +1,6 @@
+Add the board kernel configuration here as:
+
+  debian/config/sg2002-milkv-duo256m.config
+
+The current `debian/rules` expects that file and will stop with a clear
+error until it exists.

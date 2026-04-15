@@ -1,0 +1,32 @@
+Source: linux-sg2002-milkv-duo256m
+Section: kernel
+Priority: optional
+Maintainer: Packaging Maintainer <maintainer@example.com>
+Build-Depends:
+ debhelper-compat (= 13)
+Build-Depends-Arch:
+ bc,
+ bison,
+ binutils-riscv64-linux-gnu,
+ cpio,
+ device-tree-compiler,
+ flex,
+ gcc-riscv64-linux-gnu,
+ kmod,
+ libelf-dev,
+ libssl-dev,
+ pahole,
+ python3,
+ rsync,
+ xz-utils
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://www.kernel.org/
+
+Package: linux-image-sg2002-milkv-duo256m
+Architecture: riscv64
+Depends: ${misc:Depends}
+Description: Upstream Linux kernel bundle for Milk-V Duo 256M
+ Builds an upstream Linux kernel package for the Milk-V Duo 256M from a
+ recipe-only Debian packaging repository. Board-specific DTS support and
+ the final kernel configuration are expected to be maintained in debian/.

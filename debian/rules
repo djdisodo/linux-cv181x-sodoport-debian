@@ -1,0 +1,46 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+ARCH := riscv
+CROSS_COMPILE ?= riscv64-linux-gnu-
+BOARD_NAME := sg2002-milkv-duo256m
+KERNEL_PACKAGE := linux-image-$(BOARD_NAME)
+BUILD_DIR := $(CURDIR)/debian/build
+PACKAGE_DIR := $(CURDIR)/debian/$(KERNEL_PACKAGE)
+INSTALL_DIR := /usr/lib/$(KERNEL_PACKAGE)
+KERNEL_CONFIG := $(CURDIR)/debian/config/$(BOARD_NAME).config
+KMAKE = $(MAKE) O="$(BUILD_DIR)" ARCH="$(ARCH)" CROSS_COMPILE="$(CROSS_COMPILE)"
+
+%:
+	dh $@
+
+override_dh_auto_configure-arch:
+	test -f "$(KERNEL_CONFIG)" || { \
+		echo "Missing $(KERNEL_CONFIG). Add the board kernel config before building." >&2; \
+		exit 1; \
+	}
+	rm -rf "$(BUILD_DIR)" "$(PACKAGE_DIR)"
+	mkdir -p "$(BUILD_DIR)" "$(PACKAGE_DIR)$(INSTALL_DIR)"
+	cp "$(KERNEL_CONFIG)" "$(BUILD_DIR)/.config"
+	$(KMAKE) olddefconfig
+
+override_dh_auto_build-arch:
+	$(KMAKE) -j$$(nproc) Image dtbs modules
+
+override_dh_auto_install-arch:
+	krel="$$(cat "$(BUILD_DIR)/include/config/kernel.release")"; \
+	mkdir -p "$(PACKAGE_DIR)$(INSTALL_DIR)"; \
+	cp "$(BUILD_DIR)/arch/riscv/boot/Image" "$(PACKAGE_DIR)$(INSTALL_DIR)/Image"; \
+	if [ -d "$(BUILD_DIR)/arch/riscv/boot/dts" ]; then \
+		cp -a "$(BUILD_DIR)/arch/riscv/boot/dts" "$(PACKAGE_DIR)$(INSTALL_DIR)/"; \
+	fi; \
+	$(KMAKE) INSTALL_MOD_PATH="$(PACKAGE_DIR)$(INSTALL_DIR)/modules-root" modules_install; \
+	rm -f "$(PACKAGE_DIR)$(INSTALL_DIR)/modules-root/lib/modules/$$krel/build"; \
+	rm -f "$(PACKAGE_DIR)$(INSTALL_DIR)/modules-root/lib/modules/$$krel/source"
+
+override_dh_auto_test:
+	:
+
+override_dh_auto_clean:
+	rm -rf "$(BUILD_DIR)" "$(PACKAGE_DIR)"
