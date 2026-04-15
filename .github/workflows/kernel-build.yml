@@ -20,7 +20,7 @@ jobs:
       - name: Install build tooling
         run: |
           apt-get update
-          apt-get install -y \
+          apt-get install -y --no-install-recommends \
             bc \
             bison \
             binutils-riscv64-linux-gnu \
@@ -36,7 +36,6 @@ jobs:
             libelf-dev \
             libssl-dev \
             pahole \
-            pristine-tar \
             python3 \
             rsync \
             xz-utils
@@ -60,6 +59,7 @@ jobs:
           mkdir -p "$tarball_dir"
           uscan --check-dirname-level 0 --download-current-version --rename --destdir "$tarball_dir"
           gbp import-orig --no-interactive \
+            --no-pristine-tar \
             --debian-branch=latest \
             --upstream-branch=upstream/latest \
             --upstream-version "$version" \
