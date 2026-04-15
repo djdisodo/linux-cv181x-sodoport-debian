@@ -1,6 +1,6 @@
 The Debian recipe currently builds from:
 
-  debian/config/sg2002-milkv-duo256m.config
+  debian/config/cv181x-sodoport.config
 
 That file is a temporary generated seed derived from:
 
@@ -14,7 +14,7 @@ The intended long-term source of truth is:
   debian/config/fragments/debian-common.fragment
   debian/config/fragments/initramfs.fragment
   debian/config/fragments/sg2002-soc.fragment
-  debian/config/fragments/sg2002-milkv-duo256m.fragment
+  debian/config/fragments/cv181x-sodoport.fragment
 
 `debian-common.fragment` should eventually be generated from the intersection
 of Debian kernel configs across architectures rather than inherited from the

@@ -1,7 +1,8 @@
 # Recipe-only Debian packaging for Linux 7.0
 
 `linux_recipe/` is a packaging-only Git repository for a Milk-V Duo 256M
-kernel package built from upstream Linux `7.0`.
+kernel package built from upstream Linux `7.0`, published under the
+`cv181x-sodoport` flavour name.
 
 The repository intentionally does not contain unpacked upstream sources. The
 expected workflow is:
@@ -15,9 +16,9 @@ The initial board configuration and DTS seed are derived from the local
 `/root/uboot/sg2002` Alpine package draft, but the Debian recipe keeps only the
 kernel-facing pieces:
 
-- `debian/config/sg2002-milkv-duo256m.config` is a temporary generated seed
+- `debian/config/cv181x-sodoport.config` is a temporary generated seed
   translated from the Alpine `cv180x.riscv64.config`, with the Alpine
-  localversion replaced by a board-specific suffix.
+  localversion replaced by the `cv181x-sodoport` flavour suffix.
 - `debian/patches/0001-riscv-dts-sophgo-add-sg2002-milkv-duo256m.patch`
   carries the board DTS addition for upstream `7.0`.
 - `debian/config/base/` and `debian/config/fragments/` now hold the
@@ -32,11 +33,11 @@ Suggested local flow:
 cd /root/uboot/linux_recipe
 git worktree add -b latest ../linux-build master
 cd ../linux-build
-version=$(dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$//')
-uscan --check-dirname-level 0 --download-current-version --rename --destdir ..
-gbp import-orig --no-interactive --debian-branch=latest \
+  version=$(dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$//')
+  uscan --check-dirname-level 0 --download-current-version --rename --destdir ..
+  gbp import-orig --no-interactive --debian-branch=latest \
   --upstream-branch=upstream/latest --upstream-version "$version" \
-  ../linux-sg2002-milkv-duo256m_${version}.orig.tar.xz
+  ../linux-cv181x-sodoport_${version}.orig.tar.xz
 dpkg-buildpackage -us -uc -b -a riscv64
 ```
 
@@ -53,5 +54,7 @@ derive a real Debian `debian-common.fragment`, run:
 debian/scripts/update-config.sh /path/to/linux
 ```
 
-The binary package is intended to install board kernel artifacts under
-`/usr/lib/linux-image-sg2002-milkv-duo256m/`.
+The image package installs board kernel artifacts under
+`/usr/lib/linux-image-cv181x-sodoport/` and kernel modules under
+`/lib/modules/<kernel-release>/`. The source package installs a compressed,
+patched source tree under `/usr/src/`.

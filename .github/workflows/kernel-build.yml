@@ -63,5 +63,5 @@ jobs:
             --debian-branch=latest \
             --upstream-branch=upstream/latest \
             --upstream-version "$version" \
-            "$tarball_dir/linux-sg2002-milkv-duo256m_${version}.orig.tar.xz"
+            "$tarball_dir/linux-cv181x-sodoport_${version}.orig.tar.xz"
           dpkg-buildpackage -us -uc -b -a riscv64

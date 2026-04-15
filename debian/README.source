@@ -12,7 +12,7 @@ Typical flow:
   uscan --check-dirname-level 0 --download-current-version --rename --destdir ..
   gbp import-orig --no-interactive --debian-branch=latest \
     --upstream-branch=upstream/latest --upstream-version "$version" \
-    ../linux-sg2002-milkv-duo256m_${version}.orig.tar.xz
+    ../linux-cv181x-sodoport_${version}.orig.tar.xz
 
 Build a source package:
 
@@ -32,7 +32,7 @@ The initial board config and DTS patch were seeded from the local
 `/root/uboot/sg2002` Alpine package draft and translated into Debian package
 inputs.
 
-The checked-in `debian/config/sg2002-milkv-duo256m.config` is only a temporary
+The checked-in `debian/config/cv181x-sodoport.config` is only a temporary
 generated seed. The intended long-term source of truth is:
 
   debian/config/base/milkv-duo_defconfig

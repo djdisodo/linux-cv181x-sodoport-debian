@@ -1,9 +1,10 @@
-Source: linux-sg2002-milkv-duo256m
+Source: linux-cv181x-sodoport
 Section: kernel
 Priority: optional
 Maintainer: Packaging Maintainer <maintainer@example.com>
 Build-Depends:
- debhelper-compat (= 13)
+ debhelper-compat (= 13),
+ xz-utils
 Build-Depends-Arch:
  bc,
  bison,
@@ -17,16 +18,22 @@ Build-Depends-Arch:
  libssl-dev:native,
  pahole,
  python3:any,
- rsync,
- xz-utils
+ rsync
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://www.kernel.org/
 
-Package: linux-image-sg2002-milkv-duo256m
+Package: linux-image-cv181x-sodoport
 Architecture: riscv64
 Depends: ${misc:Depends}
-Description: Upstream Linux kernel bundle for Milk-V Duo 256M
- Builds an upstream Linux kernel package for the Milk-V Duo 256M from a
- recipe-only Debian packaging repository. Board-specific DTS support and
- the final kernel configuration are expected to be maintained in debian/.
+Description: Linux image and modules for the cv181x-sodoport flavour
+ Builds an upstream Linux kernel image package for the Milk-V Duo 256M using
+ the cv181x-sodoport flavour name. The package installs the kernel image,
+ device trees, metadata, and kernel modules.
+
+Package: linux-source-cv181x-sodoport
+Architecture: all
+Depends: ${misc:Depends}
+Description: Patched Linux source bundle for the cv181x-sodoport flavour
+ Installs a compressed, patched Linux source tree for the cv181x-sodoport
+ flavour under /usr/src so the packaged kernel can be inspected or rebuilt.

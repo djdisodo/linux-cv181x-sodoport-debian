@@ -7,7 +7,7 @@
 # Intent:
 # - keep SoC/family bring-up here
 # - keep Debian-wide distro policy in debian-common.fragment
-# - keep board-specific choices in sg2002-milkv-duo256m.fragment
+# - keep flavour-specific choices in cv181x-sodoport.fragment
 #
 # This is intentionally conservative. It enables the SoC-family blocks that are
 # visible in the known-good Milk-V Duo config, while avoiding board policy such

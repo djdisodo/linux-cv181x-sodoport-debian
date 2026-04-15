@@ -1,4 +1,4 @@
-# Board and package-specific overrides for the Milk-V Duo 256M kernel.
+# Flavour-specific overrides for the cv181x-sodoport kernel on Milk-V Duo 256M.
 #
 # Keep this fragment for:
 # - board-specific enablement on top of the SoC baseline
@@ -7,8 +7,8 @@
 #
 # Debian-wide common policy belongs in debian-common.fragment.
 
-# Keep the installed kernel release stable and board-specific.
-CONFIG_LOCALVERSION="-sg2002-milkv-duo256m"
+# Keep the installed kernel release stable and flavour-specific.
+CONFIG_LOCALVERSION="-cv181x-sodoport"
 CONFIG_LOCALVERSION_AUTO=n
 
 # Explicitly keep clearly irrelevant generic distro requests out of this

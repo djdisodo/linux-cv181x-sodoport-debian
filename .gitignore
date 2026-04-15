@@ -12,4 +12,5 @@ debian/.debhelper/
 debian/build/
 debian/debhelper-build-stamp
 debian/files
-debian/linux-image-sg2002-milkv-duo256m/
+debian/linux-image-cv181x-sodoport/
+debian/linux-source-cv181x-sodoport/

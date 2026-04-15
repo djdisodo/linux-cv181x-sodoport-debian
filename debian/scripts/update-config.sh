@@ -5,12 +5,12 @@ usage() {
 	cat <<'EOF'
 Usage: debian/scripts/update-config.sh /path/to/linux
 
-Regenerate debian/config/sg2002-milkv-duo256m.config from:
+Regenerate debian/config/cv181x-sodoport.config from:
 1. debian/config/base/milkv-duo_defconfig
 2. debian/config/fragments/debian-common.fragment
 3. debian/config/fragments/initramfs.fragment
 4. debian/config/fragments/sg2002-soc.fragment
-5. debian/config/fragments/sg2002-milkv-duo256m.fragment
+5. debian/config/fragments/cv181x-sodoport.fragment
 
 The kernel tree must be a full source checkout and must contain
 scripts/kconfig/merge_config.sh.
@@ -35,13 +35,13 @@ trap 'rm -rf "$out_dir"' EXIT
 
 base_config="$config_dir/base/milkv-duo_defconfig"
 merge_script="$linux_dir/scripts/kconfig/merge_config.sh"
-generated_config="$config_dir/sg2002-milkv-duo256m.config"
+generated_config="$config_dir/cv181x-sodoport.config"
 
 fragments=(
 	"$config_dir/fragments/debian-common.fragment"
 	"$config_dir/fragments/initramfs.fragment"
 	"$config_dir/fragments/sg2002-soc.fragment"
-	"$config_dir/fragments/sg2002-milkv-duo256m.fragment"
+	"$config_dir/fragments/cv181x-sodoport.fragment"
 )
 
 for path in "$linux_dir/Makefile" "$merge_script" "$base_config"; do
