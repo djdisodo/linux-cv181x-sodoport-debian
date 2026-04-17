@@ -1,4 +1,4 @@
-linux-cv181x-sodoport (7.0-9) unstable; urgency=medium
+linux-cv181x-sodoport (7.0-10) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
@@ -18,5 +18,15 @@ linux-cv181x-sodoport (7.0-9) unstable; urgency=medium
     amd64 toolchain instead of trying to install them as riscv64 packages.
   * Replace debhelper-compat with a native debhelper dependency to avoid
     cross-resolver issues with the compat virtual package.
+  * Declare debhelper compatibility via debian/compat so source package
+    generation does not rely on dh inheriting DH_COMPAT from debian/rules.
+  * Make the CI sbuild wrapper use native helper dependencies for cross builds
+    so Ubuntu's runner package does not try to satisfy dumb-init for the
+    target architecture.
+  * Remove the throw-away chroot's external apt solver before dependency
+    installation so cross-builds fall back to plain apt instead of crashing
+    on the runner's mismatched solver binary.
+  * Disable the uninstallable build-dependency explainer in CI so genuine
+    dependency failures report directly from the install step.
 
- -- Packaging Maintainer <maintainer@example.com>  Fri, 17 Apr 2026 23:10:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Fri, 17 Apr 2026 23:42:00 +0900

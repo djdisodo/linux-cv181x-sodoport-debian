@@ -9,11 +9,14 @@ dsc=""
 suite=""
 build_arch=""
 host_arch=""
+build_dep_resolver="${SBUILD_BUILD_DEP_RESOLVER:-apt}"
+bd_uninstallable_explainer="${SBUILD_BD_UNINSTALLABLE_EXPLAINER:-none}"
 mirror="${SBUILD_MIRROR:-http://deb.debian.org/debian}"
 build_dir=""
 artifact_dir=""
 output_file=""
 keyring=""
+sbuild_config=""
 
 while (($#)); do
 	case "$1" in
@@ -114,6 +117,13 @@ artifact_dir=${artifact_dir:-"$(dirname -- "$workspace")/artifacts"}
 chroot_tarball="${HOME}/.cache/sbuild/${suite}-${build_arch}.tar"
 keyring=${keyring:-${SBUILD_KEYRING:-}}
 
+cleanup() {
+	if [[ -n "$sbuild_config" && -f "$sbuild_config" ]]; then
+		rm -f "$sbuild_config"
+	fi
+}
+trap cleanup EXIT
+
 user_name=$(id -un)
 getsubids "$user_name" >/dev/null 2>&1 || die "missing subuid allocation for ${user_name}; configure /etc/subuid before using sbuild unshare mode"
 getsubids -g "$user_name" >/dev/null 2>&1 || die "missing subgid allocation for ${user_name}; configure /etc/subgid before using sbuild unshare mode"
@@ -140,19 +150,43 @@ if [[ ! -f "$chroot_tarball" ]]; then
 	mmdebstrap "${mmdebstrap_args[@]}" "$suite" "$chroot_tarball" "$mirror"
 fi
 
+if [[ "$host_arch" != "$build_arch" ]]; then
+	sbuild_config=$(mktemp)
+	cat >"$sbuild_config" <<'EOF'
+$core_depends = [
+	'build-essential:native',
+	'fakeroot:native',
+	'dumb-init:native',
+];
+$external_commands ||= {};
+$external_commands->{"chroot-setup-commands"} ||= [];
+push @{ $external_commands->{"chroot-setup-commands"} },
+	['rm', '-f', '/usr/lib/apt/solvers/apt', '/usr/lib/apt/solvers/solver3'];
+EOF
+fi
+
 run_sbuild() {
-	sbuild \
+	local -a sbuild_args=(
 		--batch \
 		--chroot-mode=unshare \
 		--chroot "$chroot_tarball" \
 		--dist "$suite" \
 		--build "$build_arch" \
 		--host "$host_arch" \
+		--build-dep-resolver "$build_dep_resolver" \
+		--bd-uninstallable-explainer "$bd_uninstallable_explainer" \
 		--build-dir "$build_dir" \
 		--no-run-lintian \
 		--no-run-autopkgtest \
 		--no-run-piuparts \
 		"$dsc"
+	)
+
+	if [[ -n "$sbuild_config" ]]; then
+		SBUILD_CONFIG="$sbuild_config" sbuild "${sbuild_args[@]}"
+	else
+		sbuild "${sbuild_args[@]}"
+	fi
 }
 
 if run_sbuild; then
