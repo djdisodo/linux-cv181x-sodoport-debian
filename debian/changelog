@@ -1,4 +1,4 @@
-linux-cv181x-sodoport (7.0-14) unstable; urgency=medium
+linux-cv181x-sodoport (7.0-15) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
@@ -45,5 +45,7 @@ linux-cv181x-sodoport (7.0-14) unstable; urgency=medium
   * Run a separate native sbuild pass for Architecture: all packages so the
     linux-source package is built and published alongside the cross-built
     kernel image and headers.
+  * Ship a Debian-owned package README in the generated source tree so
+    dh_installdocs no longer depends on the recipe branch's README filename.
 
- -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 01:18:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 01:34:00 +0900

@@ -1,0 +1,18 @@
+This package is built from upstream Linux 7.0 plus Debian packaging for the
+cv181x-sodoport flavour used on the Milk-V Duo 256M family.
+
+Binary package roles:
+
+  linux-image-7.0.0-cv181x-sodoport
+    versioned kernel image package with /boot artifacts, modules, and DTBs
+  linux-image-cv181x-sodoport
+    unversioned meta-package for the current kernel image
+  linux-headers-7.0.0-cv181x-sodoport
+    versioned header tree under /usr/src for external module builds
+  linux-headers-cv181x-sodoport
+    unversioned meta-package for the current headers package
+  linux-source-cv181x-sodoport
+    patched source bundle under /usr/src
+
+The package layout is intentionally close to standard Debian kernel packaging
+so kernel upgrades continue to use the normal maintainer hook flow.
