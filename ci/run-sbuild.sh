@@ -7,7 +7,8 @@ source "$script_dir/lib.sh"
 workspace=""
 dsc=""
 suite=""
-arch=""
+build_arch=""
+host_arch=""
 mirror="${SBUILD_MIRROR:-http://deb.debian.org/debian}"
 build_dir=""
 artifact_dir=""
@@ -29,7 +30,11 @@ while (($#)); do
 			shift 2
 			;;
 		--arch)
-			arch="$2"
+			build_arch="$2"
+			shift 2
+			;;
+		--host-arch)
+			host_arch="$2"
 			shift 2
 			;;
 		--mirror)
@@ -102,10 +107,11 @@ full_version=$(package_full_version)
 upstream_version=$(package_upstream_version)
 dist_from_changelog=$(package_distribution)
 suite=$(normalized_sbuild_suite "${suite:-${SBUILD_SUITE:-$dist_from_changelog}}")
-arch=${arch:-${SBUILD_ARCH:-$(dpkg --print-architecture)}}
+build_arch=${build_arch:-${SBUILD_BUILD_ARCH:-${SBUILD_ARCH:-$(dpkg --print-architecture)}}}
+host_arch=${host_arch:-${SBUILD_HOST_ARCH:-$build_arch}}
 build_dir=${build_dir:-"$(dirname -- "$workspace")/sbuild-out"}
 artifact_dir=${artifact_dir:-"$(dirname -- "$workspace")/artifacts"}
-chroot_tarball="${HOME}/.cache/sbuild/${suite}-${arch}.tar"
+chroot_tarball="${HOME}/.cache/sbuild/${suite}-${build_arch}.tar"
 keyring=${keyring:-${SBUILD_KEYRING:-}}
 
 user_name=$(id -un)
@@ -140,7 +146,8 @@ run_sbuild() {
 		--chroot-mode=unshare \
 		--chroot "$chroot_tarball" \
 		--dist "$suite" \
-		--arch "$arch" \
+		--build "$build_arch" \
+		--host "$host_arch" \
 		--build-dir "$build_dir" \
 		--no-run-lintian \
 		--no-run-autopkgtest \
@@ -176,12 +183,12 @@ for file in \
 done
 
 for file in \
-	"${parent_dir}/${source_pkg}_${full_version}"*.deb \
-	"${parent_dir}/${source_pkg}_${full_version}"*.udeb \
+	"${parent_dir}"/*_"${full_version}"_*.deb \
+	"${parent_dir}"/*_"${full_version}"_*.udeb \
 	"${parent_dir}/${source_pkg}_${full_version}"*.changes \
 	"${parent_dir}/${source_pkg}_${full_version}"*.buildinfo \
-	"${build_dir}/${source_pkg}_${full_version}"*.deb \
-	"${build_dir}/${source_pkg}_${full_version}"*.udeb \
+	"${build_dir}"/*_"${full_version}"_*.deb \
+	"${build_dir}"/*_"${full_version}"_*.udeb \
 	"${build_dir}/${source_pkg}_${full_version}"*.changes \
 	"${build_dir}/${source_pkg}_${full_version}"*.buildinfo \
 	"${build_dir}"/**/"${source_pkg}_${full_version}"*.build; do
