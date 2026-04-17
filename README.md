@@ -4,13 +4,22 @@
 kernel package built from upstream Linux `7.0`, published under the
 `cv181x-sodoport` flavour name.
 
-The repository intentionally does not contain unpacked upstream sources. The
-expected workflow is:
+The repository intentionally does not contain unpacked upstream sources.
 
-1. Keep the recipe on `master`.
-2. Import upstream tarballs into a generated `latest` branch with
-   `gbp import-orig`.
-3. Maintain board-specific DTS patches with `dpkg-source --commit`.
+**Branch model**
+
+- `master`: recipe-only branch. CI builds artifacts only.
+- `latest-recipe`: recipe-only branch. CI builds, regenerates the published
+  `gbp` branches, pushes them back to GitHub, and publishes `.deb` files to
+  `deb-s3`.
+- `latest`: generated build branch with unpacked upstream sources plus
+  `debian/`.
+- `upstream/latest`: imported upstream source branch for `gbp`.
+- `pristine-tar`: `pristine-tar` metadata.
+
+The generated `latest` branch is reconstructed by CI with `uscan` and
+`gbp import-orig`, or by reapplying `debian/` onto the existing imported
+upstream branch when the upstream version has not changed.
 
 The initial board configuration and DTS seed are derived from the local
 `/root/uboot/sg2002` Alpine package draft, but the Debian recipe keeps only the
@@ -27,15 +36,16 @@ kernel-facing pieces:
   of Debian kernel configs across architectures, then regenerate the full board
   config with `debian/scripts/update-config.sh`.
 
-Suggested local flow:
+**Local build flow**
 
 ```sh
 cd /root/uboot/linux_recipe
-git worktree add -b latest ../linux-build master
+git fetch origin latest upstream/latest pristine-tar --tags || true
+git worktree add ../linux-build origin/master
 cd ../linux-build
-  version=$(dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$//')
-  uscan --check-dirname-level 0 --download-current-version --rename --destdir ..
-  gbp import-orig --no-interactive --debian-branch=latest \
+version=$(dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$//')
+uscan --check-dirname-level 0 --download-current-version --rename --destdir ..
+gbp import-orig --no-interactive --debian-branch=latest \
   --upstream-branch=upstream/latest --upstream-version "$version" \
   ../linux-cv181x-sodoport_${version}.orig.tar.xz
 dpkg-buildpackage -us -uc -b -a riscv64
@@ -54,7 +64,35 @@ derive a real Debian `debian-common.fragment`, run:
 debian/scripts/update-config.sh /path/to/linux
 ```
 
-The image package installs board kernel artifacts under
-`/usr/lib/linux-image-cv181x-sodoport/` and kernel modules under
-`/lib/modules/<kernel-release>/`. The source package installs a compressed,
-patched source tree under `/usr/src/`.
+The Debian outputs are split as follows:
+
+- `linux-image-7.0.0-cv181x-sodoport`: the versioned kernel package, which
+  installs `/boot/vmlinuz-7.0.0-cv181x-sodoport`,
+  `/boot/System.map-7.0.0-cv181x-sodoport`,
+  `/boot/config-7.0.0-cv181x-sodoport`, board DTBs under
+  `/usr/lib/linux-image-7.0.0-cv181x-sodoport/`, and modules under
+  `/lib/modules/7.0.0-cv181x-sodoport/`.
+- `linux-image-cv181x-sodoport`: an unversioned meta-package that depends on
+  the current versioned kernel.
+- `linux-source-cv181x-sodoport`: a compressed, patched source tree under
+  `/usr/src/`.
+
+The kernel package itself does not choose a board DTB. When `u-boot-menu` is
+installed by a board support package, Debian kernel hooks still regenerate
+`/boot/extlinux/extlinux.conf`; the board package is responsible for setting
+`fdtfile` in U-Boot and for any `u-boot-menu` policy such as DTB syncing or
+overlay paths.
+
+**CI inputs**
+
+- `DEB_S3_BUCKET` repo variable: required for `deb-s3` publishing.
+- `DEB_S3_CODENAME`, `DEB_S3_COMPONENT`, `DEB_S3_REGION`, `DEB_S3_ENDPOINT`,
+  `DEB_S3_FORCE_PATH_STYLE`, `DEB_S3_PREFIX`, `DEB_S3_ORIGIN`, `DEB_S3_SUITE`,
+  `DEB_S3_CLEAN`, `DEB_S3_PRESERVE_VERSIONS`, `DEB_S3_LOCK`,
+  `DEB_S3_FAIL_IF_EXISTS`, `DEB_S3_USE_SESSION_TOKEN`, `DEB_S3_VISIBILITY`
+  repo variables: optional publish controls.
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` secrets:
+  used by `deb-s3`.
+
+`ci/run-sbuild.sh` refreshes the Debian archive keyring from the official
+Debian package pool when bootstrapping a Debian mirror.

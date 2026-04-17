@@ -5,12 +5,15 @@ export DH_VERBOSE = 1
 ARCH := riscv
 CROSS_COMPILE ?= riscv64-linux-gnu-
 KERNEL_NAME := cv181x-sodoport
-IMAGE_PACKAGE := linux-image-$(KERNEL_NAME)
+KERNEL_ABI := 7.0.0
+KERNEL_RELEASE := $(KERNEL_ABI)-$(KERNEL_NAME)
+IMAGE_PACKAGE := linux-image-$(KERNEL_RELEASE)
+META_PACKAGE := linux-image-$(KERNEL_NAME)
 SOURCE_PACKAGE := linux-source-$(KERNEL_NAME)
 BUILD_DIR := $(CURDIR)/debian/build
 IMAGE_DIR := $(CURDIR)/debian/$(IMAGE_PACKAGE)
+META_DIR := $(CURDIR)/debian/$(META_PACKAGE)
 SOURCE_DIR := $(CURDIR)/debian/$(SOURCE_PACKAGE)
-IMAGE_INSTALL_DIR := /usr/lib/$(IMAGE_PACKAGE)
 SOURCE_INSTALL_DIR := /usr/src
 SOURCE_VERSION := $(shell dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$$//')
 KERNEL_CONFIG := $(CURDIR)/debian/config/$(KERNEL_NAME).config
@@ -24,8 +27,8 @@ override_dh_auto_configure-arch:
 		echo "Missing $(KERNEL_CONFIG). Add the board kernel config before building." >&2; \
 		exit 1; \
 	}
-	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)"
-	mkdir -p "$(BUILD_DIR)" "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)"
+	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(META_DIR)"
+	mkdir -p "$(BUILD_DIR)"
 	cp "$(KERNEL_CONFIG)" "$(BUILD_DIR)/.config"
 	$(KMAKE) olddefconfig
 
@@ -40,13 +43,25 @@ override_dh_auto_build-indep:
 
 override_dh_auto_install-arch:
 	krel="$$(cat "$(BUILD_DIR)/include/config/kernel.release")"; \
-	mkdir -p "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)"; \
-	cp "$(BUILD_DIR)/arch/riscv/boot/Image" "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)/Image"; \
-	cp "$(BUILD_DIR)/System.map" "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)/System.map"; \
-	cp "$(BUILD_DIR)/.config" "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)/config"; \
-	printf '%s\n' "$$krel" > "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)/kernel.release"; \
+	test "$$krel" = "$(KERNEL_RELEASE)" || { \
+		echo "Kernel release $$krel does not match expected $(KERNEL_RELEASE)." >&2; \
+		exit 1; \
+	}; \
+	kdata="$(IMAGE_DIR)/usr/lib/$(IMAGE_PACKAGE)"; \
+	mkdir -p "$(IMAGE_DIR)/boot" "$$kdata"; \
+	cp "$(BUILD_DIR)/arch/riscv/boot/Image" "$(IMAGE_DIR)/boot/vmlinuz-$$krel"; \
+	cp "$(BUILD_DIR)/System.map" "$(IMAGE_DIR)/boot/System.map-$$krel"; \
+	cp "$(BUILD_DIR)/.config" "$(IMAGE_DIR)/boot/config-$$krel"; \
+	cp "$(BUILD_DIR)/arch/riscv/boot/Image" "$$kdata/Image"; \
+	cp "$(BUILD_DIR)/System.map" "$$kdata/System.map"; \
+	cp "$(BUILD_DIR)/.config" "$$kdata/config"; \
+	printf '%s\n' "$$krel" > "$$kdata/kernel.release"; \
 	if [ -d "$(BUILD_DIR)/arch/riscv/boot/dts" ]; then \
-		cp -a "$(BUILD_DIR)/arch/riscv/boot/dts" "$(IMAGE_DIR)$(IMAGE_INSTALL_DIR)/"; \
+		mkdir -p "$$kdata/dts"; \
+		( cd "$(BUILD_DIR)/arch/riscv/boot/dts" && \
+			find . -type f \( -name '*.dtb' -o -name '*.dtbo' \) -print0 | \
+			tar --null -T - -cf - ) | \
+			tar -C "$$kdata/dts" -xf -; \
 	fi; \
 	$(KMAKE) INSTALL_MOD_PATH="$(IMAGE_DIR)" modules_install; \
 	rm -f "$(IMAGE_DIR)/lib/modules/$$krel/build"; \
@@ -57,7 +72,15 @@ override_dh_auto_install-indep:
 	archive="$(SOURCE_DIR)$(SOURCE_INSTALL_DIR)/$(SOURCE_PACKAGE)-$$version.tar.xz"; \
 	epoch="$${SOURCE_DATE_EPOCH:-0}"; \
 	mkdir -p "$(SOURCE_DIR)$(SOURCE_INSTALL_DIR)"; \
-	git -C "$(CURDIR)" ls-files -z | \
+	find "$(CURDIR)" \
+		\( -path "$(CURDIR)/.git" -o -path "$(CURDIR)/.pc" -o -path "$(BUILD_DIR)" -o \
+		   -path "$(CURDIR)/debian/.debhelper" -o -path "$(IMAGE_DIR)" -o \
+		   -path "$(META_DIR)" -o -path "$(SOURCE_DIR)" \) -prune -o \
+		\( -type f -o -type l \) \
+		! -name '*.substvars' \
+		! -name 'files' \
+		! -name 'debhelper-build-stamp' \
+		-printf '%P\0' | \
 	tar -C "$(CURDIR)" --null -T - \
 		--sort=name \
 		--mtime="@$$epoch" \
@@ -70,4 +93,4 @@ override_dh_auto_test:
 	:
 
 override_dh_auto_clean:
-	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(SOURCE_DIR)"
+	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(META_DIR)" "$(SOURCE_DIR)"

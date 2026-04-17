@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+exec </dev/null >&2
+
+version="7.0.0-cv181x-sodoport"
+image_path="/boot/vmlinuz-$version"
+
+case "${1:-}" in
+	configure)
+		mode=install
+		if [ -n "${2:-}" ]; then
+			mode=upgrade
+		fi
+
+		if command -v depmod >/dev/null 2>&1; then
+			depmod "$version"
+		fi
+
+		linux-update-symlinks "$mode" "$version" "$image_path"
+
+		if [ -d /etc/kernel/postinst.d ]; then
+			export DEB_MAINT_PARAMS="$*"
+			run-parts --arg="$version" --arg="$image_path" /etc/kernel/postinst.d
+		fi
+		;;
+esac
+
+#DEBHELPER#

@@ -16,6 +16,14 @@ CONFIG_LOCALVERSION_AUTO=n
 # CONFIG_CRYPTO_AES_TI is not set
 # CONFIG_VIRTIO_PCI is not set
 
+# Keep installed modules compressed to reduce the rootfs footprint while still
+# letting initramfs-tools include the subset it needs via MODULES=most.
+CONFIG_MODULE_COMPRESS=y
+# CONFIG_MODULE_COMPRESS_GZIP is not set
+# CONFIG_MODULE_COMPRESS_XZ is not set
+CONFIG_MODULE_COMPRESS_ZSTD=y
+CONFIG_MODULE_COMPRESS_ALL=y
+
 # Common USB Wi-Fi drivers for bring-up and field use.
 CONFIG_NEW_LEDS=y
 CONFIG_LEDS_CLASS=y

@@ -23,13 +23,30 @@ Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://www.kernel.org/
 
+Package: linux-image-7.0.0-cv181x-sodoport
+Architecture: riscv64
+Depends:
+ ${misc:Depends},
+ initramfs-tools | linux-initramfs-tool,
+ linux-base (>= 4.5)
+Breaks:
+ linux-image-cv181x-sodoport (<< 7.0-3)
+Replaces:
+ linux-image-cv181x-sodoport (<< 7.0-3)
+Description: Linux kernel image 7.0.0 for the cv181x-sodoport flavour
+ Builds an upstream Linux kernel image package for the Milk-V Duo 256M using
+ the cv181x-sodoport flavour name. The package installs the versioned kernel
+ image under /boot, board device trees under /usr/lib/linux-image-<version>/,
+ and kernel modules under /lib/modules/<version>.
+
 Package: linux-image-cv181x-sodoport
 Architecture: riscv64
-Depends: ${misc:Depends}
-Description: Linux image and modules for the cv181x-sodoport flavour
- Builds an upstream Linux kernel image package for the Milk-V Duo 256M using
- the cv181x-sodoport flavour name. The package installs the kernel image,
- device trees, metadata, and kernel modules.
+Depends:
+ ${misc:Depends},
+ linux-image-7.0.0-cv181x-sodoport (= ${binary:Version})
+Description: Meta-package for the cv181x-sodoport kernel
+ Depends on the current versioned cv181x-sodoport kernel package so systems
+ can track the latest packaged kernel through normal Debian upgrades.
 
 Package: linux-source-cv181x-sodoport
 Architecture: all

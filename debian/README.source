@@ -6,7 +6,8 @@ configuration in `debian/gbp.conf`.
 Typical flow:
 
   cd /root/uboot/linux_recipe
-  git worktree add -b latest ../linux-build master
+  git fetch origin latest upstream/latest pristine-tar --tags || true
+  git worktree add ../linux-build origin/master
   cd ../linux-build
   version=$(dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$//')
   uscan --check-dirname-level 0 --download-current-version --rename --destdir ..
@@ -31,6 +32,15 @@ imported source tree with:
 The initial board config and DTS patch were seeded from the local
 `/root/uboot/sg2002` Alpine package draft and translated into Debian package
 inputs.
+
+The resulting binary packages follow Debian's normal kernel split:
+
+  linux-image-7.0.0-cv181x-sodoport
+    versioned kernel image package with /boot artifacts, modules, and DTBs
+  linux-image-cv181x-sodoport
+    unversioned meta-package for the current kernel
+  linux-source-cv181x-sodoport
+    patched source bundle under /usr/src
 
 The checked-in `debian/config/cv181x-sodoport.config` is only a temporary
 generated seed. The intended long-term source of truth is:

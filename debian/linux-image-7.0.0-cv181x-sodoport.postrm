@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+exec </dev/null >&2
+
+version="7.0.0-cv181x-sodoport"
+image_path="/boot/vmlinuz-$version"
+
+case "${1:-}" in
+	remove)
+		linux-update-symlinks remove "$version" "$image_path"
+
+		if [ -d /etc/kernel/postrm.d ]; then
+			export DEB_MAINT_PARAMS="$*"
+			run-parts --arg="$version" --arg="$image_path" /etc/kernel/postrm.d
+		fi
+		;;
+esac
+
+#DEBHELPER#
