@@ -1,4 +1,4 @@
-linux-cv181x-sodoport (7.0-12) unstable; urgency=medium
+linux-cv181x-sodoport (7.0-13) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
@@ -35,5 +35,9 @@ linux-cv181x-sodoport (7.0-12) unstable; urgency=medium
     dpkg-checkbuilddeps accepts the native packages that sbuild installs
     during cross builds. Keep :native only for native -dev packages that
     must stay on the build architecture.
+  * Add missing kernel build tools for Debian-style packaging by declaring
+    openssl and zstd in Build-Depends-Arch, matching the current config's
+    compressed-module install path more closely to Debian's linux source
+    package.
 
- -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 00:08:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 00:34:00 +0900

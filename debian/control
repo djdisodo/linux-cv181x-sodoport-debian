@@ -16,9 +16,11 @@ Build-Depends-Arch:
  kmod,
  libelf-dev:native,
  libssl-dev:native,
+ openssl,
  pahole,
  python3:any,
- rsync
+ rsync,
+ zstd
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://www.kernel.org/
