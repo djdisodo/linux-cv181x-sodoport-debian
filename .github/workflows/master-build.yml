@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -57,8 +57,8 @@ jobs:
         run: |
           ./ci/generate-gbp-repo.sh \
             --source-branch master \
-            --generated-branch ci/master-build \
-            --workspace "${RUNNER_TEMP}/ci-master-build" \
+            --generated-branch latest \
+            --workspace "${RUNNER_TEMP}/latest-generated" \
             --remote origin \
             --output-file "$GITHUB_OUTPUT"
 
@@ -84,3 +84,11 @@ jobs:
           name: master-${{ github.sha }}
           path: ${{ runner.temp }}/artifacts/
           if-no-files-found: error
+
+      - name: Push generated branches and tags
+        run: |
+          ./ci/push-generated-gbp-refs.sh \
+            --workspace "${{ steps.generate.outputs.workspace }}" \
+            --generated-branch latest \
+            --upstream-branch upstream/latest \
+            --remote origin

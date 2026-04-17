@@ -8,10 +8,10 @@ The repository intentionally does not contain unpacked upstream sources.
 
 **Branch model**
 
-- `master`: recipe-only branch. CI builds artifacts only.
-- `latest-recipe`: recipe-only branch. CI builds, regenerates the published
-  `gbp` branches, pushes them back to GitHub, and publishes `.deb` files to
-  `deb-s3`.
+- `master`: recipe-only branch. CI builds artifacts, regenerates the published
+  `gbp` branches, and pushes them back to GitHub.
+- `latest-recipe`: recipe-only branch. CI builds and publishes `.deb` files to
+  `deb-s3` without updating the published `gbp` branches.
 - `latest`: generated build branch with unpacked upstream sources plus
   `debian/`.
 - `upstream/latest`: imported upstream source branch for `gbp`.

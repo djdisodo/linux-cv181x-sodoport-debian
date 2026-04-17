@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-generate-publish:
@@ -80,8 +80,8 @@ jobs:
         run: |
           ./ci/generate-gbp-repo.sh \
             --source-branch latest-recipe \
-            --generated-branch latest \
-            --workspace "${RUNNER_TEMP}/latest-generated" \
+            --generated-branch ci/latest-recipe-build \
+            --workspace "${RUNNER_TEMP}/ci-latest-recipe-build" \
             --remote origin \
             --output-file "$GITHUB_OUTPUT"
 
@@ -107,14 +107,6 @@ jobs:
           name: latest-recipe-${{ github.sha }}
           path: ${{ runner.temp }}/artifacts/
           if-no-files-found: error
-
-      - name: Push generated branches and tags
-        run: |
-          ./ci/push-generated-gbp-refs.sh \
-            --workspace "${{ steps.generate.outputs.workspace }}" \
-            --generated-branch latest \
-            --upstream-branch upstream/latest \
-            --remote origin
 
       - name: Publish to deb-s3
         if: ${{ env.DEB_S3_BUCKET != '' && env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' }}
