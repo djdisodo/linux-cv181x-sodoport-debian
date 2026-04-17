@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build-generate-publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       DEBIAN_FRONTEND: noninteractive
       SBUILD_MIRROR: http://deb.debian.org/debian
@@ -45,6 +45,9 @@ jobs:
 
       - name: Install host tooling
         run: |
+          sudo tee /etc/apt/sources.list.d/noble-backports.list >/dev/null <<'EOF'
+          deb http://archive.ubuntu.com/ubuntu noble-backports main
+          EOF
           sudo apt-get update
           sudo apt-get install -y \
             curl \
@@ -53,7 +56,9 @@ jobs:
             git-buildpackage \
             mmdebstrap \
             pristine-tar \
-            ruby \
+            ruby
+          sudo apt-get install -y -t noble-backports \
+            libsbuild-perl \
             sbuild
           sudo gem install --no-document deb-s3
 

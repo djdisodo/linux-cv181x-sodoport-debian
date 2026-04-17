@@ -1,4 +1,4 @@
-linux-cv181x-sodoport (7.0-10) unstable; urgency=medium
+linux-cv181x-sodoport (7.0-11) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
@@ -28,5 +28,8 @@ linux-cv181x-sodoport (7.0-10) unstable; urgency=medium
     on the runner's mismatched solver binary.
   * Disable the uninstallable build-dependency explainer in CI so genuine
     dependency failures report directly from the install step.
+  * Install sbuild from Ubuntu 24.04 backports in GitHub Actions so the
+    runner uses a version that includes the dumb-init and cross-resolver
+    fixes missing from noble-updates 0.85.10ubuntu0.2.
 
- -- Packaging Maintainer <maintainer@example.com>  Fri, 17 Apr 2026 23:42:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Fri, 17 Apr 2026 23:58:00 +0900
