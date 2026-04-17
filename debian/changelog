@@ -1,4 +1,4 @@
-linux-cv181x-sodoport (7.0-13) unstable; urgency=medium
+linux-cv181x-sodoport (7.0-14) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
@@ -39,5 +39,11 @@ linux-cv181x-sodoport (7.0-13) unstable; urgency=medium
     openssl and zstd in Build-Depends-Arch, matching the current config's
     compressed-module install path more closely to Debian's linux source
     package.
+  * Build and publish versioned plus meta kernel headers packages with
+    standard /usr/src and /lib/modules/<version>/{build,source} layout for
+    external module builds.
+  * Run a separate native sbuild pass for Architecture: all packages so the
+    linux-source package is built and published alongside the cross-built
+    kernel image and headers.
 
- -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 00:34:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 01:18:00 +0900

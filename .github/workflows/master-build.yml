@@ -84,6 +84,19 @@ jobs:
             --artifact-dir "${RUNNER_TEMP}/artifacts" \
             --output-file "$GITHUB_OUTPUT"
 
+      - name: Build arch-indep packages in sbuild
+        id: sbuild_indep
+        run: |
+          native_arch="$(dpkg --print-architecture)"
+          ./ci/run-sbuild.sh \
+            --workspace "${{ steps.generate.outputs.workspace }}" \
+            --dsc "${{ steps.source.outputs.dsc }}" \
+            --arch "$native_arch" \
+            --host-arch "$native_arch" \
+            --build-artifacts indep \
+            --artifact-dir "${{ steps.sbuild.outputs.artifact_dir }}" \
+            --output-file "$GITHUB_OUTPUT"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

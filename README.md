@@ -74,6 +74,13 @@ The Debian outputs are split as follows:
   `/lib/modules/7.0.0-cv181x-sodoport/`.
 - `linux-image-cv181x-sodoport`: an unversioned meta-package that depends on
   the current versioned kernel.
+- `linux-headers-7.0.0-cv181x-sodoport`: the versioned headers package, which
+  installs a prepared kernel header tree under
+  `/usr/src/linux-headers-7.0.0-cv181x-sodoport` and the standard
+  `/lib/modules/7.0.0-cv181x-sodoport/{build,source}` symlinks for external
+  module builds.
+- `linux-headers-cv181x-sodoport`: an unversioned meta-package that depends on
+  the current versioned headers package.
 - `linux-source-cv181x-sodoport`: a compressed, patched source tree under
   `/usr/src/`.
 

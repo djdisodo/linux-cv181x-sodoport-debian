@@ -9,11 +9,16 @@ KERNEL_ABI := 7.0.0
 KERNEL_RELEASE := $(KERNEL_ABI)-$(KERNEL_NAME)
 IMAGE_PACKAGE := linux-image-$(KERNEL_RELEASE)
 META_PACKAGE := linux-image-$(KERNEL_NAME)
+HEADER_PACKAGE := linux-headers-$(KERNEL_RELEASE)
+HEADER_META_PACKAGE := linux-headers-$(KERNEL_NAME)
 SOURCE_PACKAGE := linux-source-$(KERNEL_NAME)
 BUILD_DIR := $(CURDIR)/debian/build
 IMAGE_DIR := $(CURDIR)/debian/$(IMAGE_PACKAGE)
 META_DIR := $(CURDIR)/debian/$(META_PACKAGE)
+HEADER_DIR := $(CURDIR)/debian/$(HEADER_PACKAGE)
+HEADER_META_DIR := $(CURDIR)/debian/$(HEADER_META_PACKAGE)
 SOURCE_DIR := $(CURDIR)/debian/$(SOURCE_PACKAGE)
+HEADER_INSTALL_DIR := /usr/src/$(HEADER_PACKAGE)
 SOURCE_INSTALL_DIR := /usr/src
 SOURCE_VERSION := $(shell dpkg-parsechangelog --show-field Version | sed 's/-[^-]*$$//')
 KERNEL_CONFIG := $(CURDIR)/debian/config/$(KERNEL_NAME).config
@@ -27,7 +32,7 @@ override_dh_auto_configure-arch:
 		echo "Missing $(KERNEL_CONFIG). Add the board kernel config before building." >&2; \
 		exit 1; \
 	}
-	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(META_DIR)"
+	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(META_DIR)" "$(HEADER_DIR)" "$(HEADER_META_DIR)"
 	mkdir -p "$(BUILD_DIR)"
 	cp "$(KERNEL_CONFIG)" "$(BUILD_DIR)/.config"
 	$(KMAKE) olddefconfig
@@ -37,6 +42,7 @@ override_dh_auto_configure-indep:
 
 override_dh_auto_build-arch:
 	$(KMAKE) -j$$(nproc) Image dtbs modules
+	$(KMAKE) modules_prepare
 
 override_dh_auto_build-indep:
 	:
@@ -48,7 +54,8 @@ override_dh_auto_install-arch:
 		exit 1; \
 	}; \
 	kdata="$(IMAGE_DIR)/usr/lib/$(IMAGE_PACKAGE)"; \
-	mkdir -p "$(IMAGE_DIR)/boot" "$$kdata"; \
+	hdst="$(HEADER_DIR)$(HEADER_INSTALL_DIR)"; \
+	mkdir -p "$(IMAGE_DIR)/boot" "$$kdata" "$$hdst" "$(HEADER_DIR)/lib/modules/$$krel"; \
 	cp "$(BUILD_DIR)/arch/riscv/boot/Image" "$(IMAGE_DIR)/boot/vmlinuz-$$krel"; \
 	cp "$(BUILD_DIR)/System.map" "$(IMAGE_DIR)/boot/System.map-$$krel"; \
 	cp "$(BUILD_DIR)/.config" "$(IMAGE_DIR)/boot/config-$$krel"; \
@@ -65,7 +72,31 @@ override_dh_auto_install-arch:
 	fi; \
 	$(KMAKE) INSTALL_MOD_PATH="$(IMAGE_DIR)" modules_install; \
 	rm -f "$(IMAGE_DIR)/lib/modules/$$krel/build"; \
-	rm -f "$(IMAGE_DIR)/lib/modules/$$krel/source"
+	rm -f "$(IMAGE_DIR)/lib/modules/$$krel/source"; \
+	for file in Makefile Kbuild Kconfig; do \
+		cp "$(CURDIR)/$$file" "$$hdst/$$file"; \
+	done; \
+	( cd "$(CURDIR)" && tar -cf - arch/riscv include scripts ) | \
+		tar -C "$$hdst" -xf -; \
+	for file in .config Module.symvers System.map; do \
+		if [ -f "$(BUILD_DIR)/$$file" ]; then \
+			cp "$(BUILD_DIR)/$$file" "$$hdst/$$file"; \
+		fi; \
+	done; \
+	if [ -d "$(BUILD_DIR)/include/config" ]; then \
+		mkdir -p "$$hdst/include/config"; \
+		cp -a "$(BUILD_DIR)/include/config/." "$$hdst/include/config/"; \
+	fi; \
+	if [ -d "$(BUILD_DIR)/include/generated" ]; then \
+		mkdir -p "$$hdst/include/generated"; \
+		cp -a "$(BUILD_DIR)/include/generated/." "$$hdst/include/generated/"; \
+	fi; \
+	if [ -d "$(BUILD_DIR)/arch/riscv/include/generated" ]; then \
+		mkdir -p "$$hdst/arch/riscv/include/generated"; \
+		cp -a "$(BUILD_DIR)/arch/riscv/include/generated/." "$$hdst/arch/riscv/include/generated/"; \
+	fi; \
+	ln -s "$(HEADER_INSTALL_DIR)" "$(HEADER_DIR)/lib/modules/$$krel/build"; \
+	ln -s "$(HEADER_INSTALL_DIR)" "$(HEADER_DIR)/lib/modules/$$krel/source"
 
 override_dh_auto_install-indep:
 	version="$(SOURCE_VERSION)"; \
@@ -75,7 +106,8 @@ override_dh_auto_install-indep:
 	find "$(CURDIR)" \
 		\( -path "$(CURDIR)/.git" -o -path "$(CURDIR)/.pc" -o -path "$(BUILD_DIR)" -o \
 		   -path "$(CURDIR)/debian/.debhelper" -o -path "$(IMAGE_DIR)" -o \
-		   -path "$(META_DIR)" -o -path "$(SOURCE_DIR)" \) -prune -o \
+		   -path "$(META_DIR)" -o -path "$(HEADER_DIR)" -o \
+		   -path "$(HEADER_META_DIR)" -o -path "$(SOURCE_DIR)" \) -prune -o \
 		\( -type f -o -type l \) \
 		! -name '*.substvars' \
 		! -name 'files' \
@@ -93,4 +125,4 @@ override_dh_auto_test:
 	:
 
 override_dh_auto_clean:
-	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(META_DIR)" "$(SOURCE_DIR)"
+	rm -rf "$(BUILD_DIR)" "$(IMAGE_DIR)" "$(META_DIR)" "$(HEADER_DIR)" "$(HEADER_META_DIR)" "$(SOURCE_DIR)"

@@ -17,6 +17,7 @@ artifact_dir=""
 output_file=""
 keyring=""
 sbuild_config=""
+build_artifacts=""
 
 while (($#)); do
 	case "$1" in
@@ -50,6 +51,10 @@ while (($#)); do
 			;;
 		--keyring)
 			keyring="$2"
+			shift 2
+			;;
+		--build-artifacts)
+			build_artifacts="$2"
 			shift 2
 			;;
 		--artifact-dir)
@@ -117,6 +122,14 @@ artifact_dir=${artifact_dir:-"$(dirname -- "$workspace")/artifacts"}
 chroot_tarball="${HOME}/.cache/sbuild/${suite}-${build_arch}.tar"
 keyring=${keyring:-${SBUILD_KEYRING:-}}
 
+if [[ -z "$build_artifacts" ]]; then
+	if [[ "$host_arch" == "$build_arch" ]]; then
+		build_artifacts=full
+	else
+		build_artifacts=any
+	fi
+fi
+
 cleanup() {
 	if [[ -n "$sbuild_config" && -f "$sbuild_config" ]]; then
 		rm -f "$sbuild_config"
@@ -182,6 +195,21 @@ run_sbuild() {
 		"$dsc"
 	)
 
+	case "$build_artifacts" in
+		any)
+			sbuild_args+=(--arch-any --no-arch-all)
+			;;
+		indep)
+			sbuild_args+=(--arch-all --no-arch-any)
+			;;
+		full)
+			sbuild_args+=(--arch-all --arch-any)
+			;;
+		*)
+			die "unsupported build artifact mode: $build_artifacts"
+			;;
+	esac
+
 	if [[ -n "$sbuild_config" ]]; then
 		SBUILD_CONFIG="$sbuild_config" sbuild "${sbuild_args[@]}"
 	else
@@ -232,3 +260,4 @@ for file in \
 done
 
 write_output "$output_file" artifact_dir "$artifact_dir"
+write_output "$output_file" build_artifacts "$build_artifacts"
