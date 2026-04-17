@@ -3,22 +3,22 @@ Section: kernel
 Priority: optional
 Maintainer: Packaging Maintainer <maintainer@example.com>
 Build-Depends:
- debhelper-compat (= 13),
- xz-utils
+ debhelper:native (>= 13~),
+ xz-utils:native
 Build-Depends-Arch:
- bc,
- bison,
- binutils-riscv64-linux-gnu:any,
- cpio,
- device-tree-compiler,
- flex,
- gcc-riscv64-linux-gnu,
- kmod,
+ bc:native,
+ bison:native,
+ binutils-riscv64-linux-gnu:native,
+ cpio:native,
+ device-tree-compiler:native,
+ flex:native,
+ gcc-riscv64-linux-gnu:native,
+ kmod:native,
  libelf-dev:native,
  libssl-dev:native,
- pahole,
- python3:any,
- rsync
+ pahole:native,
+ python3:native,
+ rsync:native
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://www.kernel.org/

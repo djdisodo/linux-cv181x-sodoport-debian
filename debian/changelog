@@ -1,4 +1,4 @@
-linux-cv181x-sodoport (7.0-8) unstable; urgency=medium
+linux-cv181x-sodoport (7.0-9) unstable; urgency=medium
 
   * Initial recipe-only Debian packaging for the Milk-V Duo 256M kernel.
   * Prepare uscan/gbp import flow for upstream Linux 7.0.
@@ -14,5 +14,9 @@ linux-cv181x-sodoport (7.0-8) unstable; urgency=medium
     via U-Boot's fdtfile mechanism.
   * Keep packaged modules compressed with Zstd.
   * Fix DTB installation paths so synced /boot DTBs match u-boot-menu lookups.
+  * Mark cross-build tools as native build dependencies so sbuild resolves the
+    amd64 toolchain instead of trying to install them as riscv64 packages.
+  * Replace debhelper-compat with a native debhelper dependency to avoid
+    cross-resolver issues with the compat virtual package.
 
- -- Packaging Maintainer <maintainer@example.com>  Fri, 17 Apr 2026 17:55:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Fri, 17 Apr 2026 23:10:00 +0900
