@@ -46,6 +46,18 @@ if [[ -n "${DEB_S3_PREFIX:-}" ]]; then
 	common_args+=(--prefix "$DEB_S3_PREFIX")
 fi
 
+if [[ -n "${DEB_S3_SIGN_KEY:-}" ]]; then
+	common_args+=(--sign "$DEB_S3_SIGN_KEY")
+fi
+
+if [[ -n "${DEB_S3_GPG_OPTIONS:-}" ]]; then
+	common_args+=(--gpg-options "$DEB_S3_GPG_OPTIONS")
+fi
+
+if [[ -n "${DEB_S3_GPG_PROVIDER:-}" ]]; then
+	common_args+=(--gpg-provider "$DEB_S3_GPG_PROVIDER")
+fi
+
 if [[ -n "${DEB_S3_ORIGIN:-}" ]]; then
 	common_args+=(--origin "$DEB_S3_ORIGIN")
 fi
