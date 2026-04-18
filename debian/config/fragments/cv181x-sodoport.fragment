@@ -24,6 +24,12 @@ CONFIG_MODULE_COMPRESS=y
 CONFIG_MODULE_COMPRESS_ZSTD=y
 CONFIG_MODULE_COMPRESS_ALL=y
 
+# This board only has 256 MiB of RAM, so shipping DWARF debug info inside
+# modules is too expensive. Disable kernel debug info globally so every module
+# and the final vmlinux image are stripped by default.
+CONFIG_DEBUG_INFO_NONE=y
+# CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT is not set
+
 # Common USB Wi-Fi drivers for bring-up and field use.
 CONFIG_NEW_LEDS=y
 CONFIG_LEDS_CLASS=y
