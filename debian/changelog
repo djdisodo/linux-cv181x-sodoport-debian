@@ -1,3 +1,10 @@
+linux-cv181x-sodoport (7.0-18) unstable; urgency=medium
+
+  * Fix the earlier DWC2 USB PHY role patch so low-level bring-up derives
+    the PHY mode from the DT dr_mode property before hsotg->dr_mode is set.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 16:15:00 +0900
+
 linux-cv181x-sodoport (7.0-17) unstable; urgency=medium
 
   * Program the generic USB PHY mode from DWC2 dr_mode so the SG2002 board
