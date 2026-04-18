@@ -1,3 +1,10 @@
+linux-cv181x-sodoport (7.0-17) unstable; urgency=medium
+
+  * Program the generic USB PHY mode from DWC2 dr_mode so the SG2002 board
+    boots the USB2 PHY with host overrides already applied.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Apr 2026 16:00:00 +0900
+
 linux-cv181x-sodoport (7.0-16) unstable; urgency=medium
 
   * Disable kernel debug info in the shipped board config so modules stay
