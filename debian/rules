@@ -70,7 +70,7 @@ override_dh_auto_install-arch:
 			tar --null -T - -cf - ) | \
 			tar -C "$$kdata/dts" -xf -; \
 	fi; \
-	$(KMAKE) INSTALL_MOD_PATH="$(IMAGE_DIR)" modules_install; \
+		$(KMAKE) INSTALL_MOD_PATH="$(IMAGE_DIR)" INSTALL_MOD_STRIP=1 modules_install; \
 	rm -f "$(IMAGE_DIR)/lib/modules/$$krel/build"; \
 	rm -f "$(IMAGE_DIR)/lib/modules/$$krel/source"; \
 	for file in Makefile Kbuild Kconfig; do \

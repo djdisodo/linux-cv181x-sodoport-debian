@@ -1,3 +1,13 @@
+linux-cv181x-sodoport (7.0-20) unstable; urgency=medium
+
+  * Enable the common cgroup v2 controllers and PSI support expected by
+    Debian's unified cgroup hierarchy.
+  * Switch from CONFIG_DEBUG_INFO_NONE to kernel BTF with stripped installed
+    modules so systemd's libbpf-backed cgroup helpers can load without
+    inflating every shipped module.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sun, 19 Apr 2026 00:45:00 +0900
+
 linux-cv181x-sodoport (7.0-19) unstable; urgency=medium
 
   * Revert the experimental DWC2 USB PHY mode patches and return to the
