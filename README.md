@@ -4,6 +4,10 @@
 kernel package built from upstream Linux `7.0`, published under the
 `cv181x-sodoport` flavour name.
 
+CI and the local `sbuild` wrapper default to Debian 13 (`trixie`) so the
+packaged kernel, headers, and typical target-side DKMS builds all use the same
+toolchain baseline.
+
 The repository intentionally does not contain unpacked upstream sources.
 
 **Branch model**

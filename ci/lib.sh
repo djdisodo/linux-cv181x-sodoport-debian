@@ -29,7 +29,7 @@ package_distribution() {
 normalized_sbuild_suite() {
 	local suite="$1"
 	if [[ -z "$suite" || "$suite" == "UNRELEASED" || "$suite" == "unreleased" ]]; then
-		printf 'unstable\n'
+		printf 'trixie\n'
 	else
 		printf '%s\n' "$suite"
 	fi
