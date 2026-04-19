@@ -76,11 +76,22 @@ override_dh_auto_install-arch:
 	for file in Makefile Kbuild Kconfig; do \
 		cp "$(CURDIR)/$$file" "$$hdst/$$file"; \
 	done; \
-	( cd "$(CURDIR)" && tar -cf - arch/riscv include scripts ) | \
-		tar -C "$$hdst" -xf -; \
-	for file in .config Module.symvers System.map; do \
-		if [ -f "$(BUILD_DIR)/$$file" ]; then \
-			cp "$(BUILD_DIR)/$$file" "$$hdst/$$file"; \
+		( cd "$(CURDIR)" && tar -cf - arch/riscv include scripts ) | \
+			tar -C "$$hdst" -xf -; \
+		for file in \
+			scripts/basic/fixdep \
+			scripts/module.lds \
+			scripts/mod/modpost \
+			scripts/sign-file \
+			tools/bpf/resolve_btfids/resolve_btfids; do \
+			if [ -f "$(BUILD_DIR)/$$file" ]; then \
+				mkdir -p "$$hdst/$$(dirname "$$file")"; \
+				cp -a "$(BUILD_DIR)/$$file" "$$hdst/$$file"; \
+			fi; \
+		done; \
+		for file in .config Module.symvers System.map; do \
+			if [ -f "$(BUILD_DIR)/$$file" ]; then \
+				cp "$(BUILD_DIR)/$$file" "$$hdst/$$file"; \
 		fi; \
 	done; \
 	if [ -d "$(BUILD_DIR)/include/config" ]; then \
