@@ -1,0 +1,91 @@
+Description: enable onboard AIC8800 Wi-Fi on the SG2002 LicheeRV Nano B
+Origin: vendor, adapted from /tmp/LicheeRV-Nano-Build and /tmp/radxa-overlays
+Forwarded: not-needed
+Last-Update: 2026-04-19
+
+--- a/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
++++ b/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
+@@ -5,12 +5,21 @@
+ 
+ /dts-v1/;
+ 
++#include <dt-bindings/gpio/gpio.h>
+ #include "sg2002.dtsi"
+ 
+ / {
+ 	model = "LicheeRV Nano B";
+ 	compatible = "sipeed,licheerv-nano-b", "sipeed,licheerv-nano", "sophgo,sg2002";
+ 
++	wifi_pwrseq: wifi-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_reset_cfg>;
++		reset-gpios = <&porta 26 GPIO_ACTIVE_LOW>;
++		post-power-on-delay-ms = <50>;
++	};
++
+ 	aliases {
+ 		gpio0 = &gpio0;
+ 		gpio1 = &gpio1;
+@@ -74,6 +83,41 @@
+ 			drive-strength-microamp = <10800>;
+ 			power-source = <3300>;
+ 		};
++
++		sdhci1_cfg: sdhci1-cfg {
++			sdhci1-clk-pins {
++				pinmux = <PINMUX(PIN_SD1_CLK, 0)>;
++				bias-pull-up;
++				drive-strength-microamp = <16100>;
++				power-source = <3300>;
++			};
++
++			sdhci1-cmd-pins {
++				pinmux = <PINMUX(PIN_SD1_CMD, 0)>;
++				bias-pull-up;
++				drive-strength-microamp = <10800>;
++				power-source = <3300>;
++			};
++
++			sdhci1-data-pins {
++				pinmux = <PINMUX(PIN_SD1_D0, 0)>,
++					 <PINMUX(PIN_SD1_D1, 0)>,
++					 <PINMUX(PIN_SD1_D2, 0)>,
++					 <PINMUX(PIN_SD1_D3, 0)>;
++				bias-pull-up;
++				drive-strength-microamp = <10800>;
++				power-source = <3300>;
++			};
++		};
++
++		wifi_reset_cfg: wifi-reset-cfg {
++			wifi-reset-pins {
++				pinmux = <PINMUX(PIN_EMMC_DAT2, 3)>;
++				bias-disable;
++				drive-strength-microamp = <10800>;
++				power-source = <3300>;
++			};
++		};
+ 	};
+ };
+ 
+@@ -88,6 +132,19 @@
+ 	disable-wp;
+ };
+ 
++&sdhci1 {
++	pinctrl-0 = <&sdhci1_cfg>;
++	pinctrl-names = "default";
++	status = "okay";
++	bus-width = <4>;
++	cap-sdio-irq;
++	max-frequency = <25000000>;
++	mmc-pwrseq = <&wifi_pwrseq>;
++	non-removable;
++	no-mmc;
++	no-sd;
++};
++
+ &uart0 {
+ 	pinctrl-0 = <&uart0_cfg>;
+ 	pinctrl-names = "default";
