@@ -1,4 +1,2 @@
 # Add DTS and related board support patches here with `dpkg-source --commit`.
 0001-riscv-dts-sophgo-add-sg2002-milkv-duo256m.patch
-0002-usb-dwc2-set-generic-phy-mode-from-dr_mode.patch
-0003-usb-dwc2-derive-phy-mode-from-dt-before-dr_mode-setup.patch
