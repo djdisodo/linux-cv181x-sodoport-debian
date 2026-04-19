@@ -15,6 +15,7 @@ Build-Depends-Arch:
  gcc-riscv64-linux-gnu,
  kmod,
  libelf-dev:native,
+ libssl-dev,
  libssl-dev:native,
  openssl,
  pahole,
