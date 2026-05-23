@@ -1,10 +1,13 @@
-linux-cv181x-sodoport (7.0-22) trixie; urgency=medium
+linux-cv181x-sodoport (7.0-23) trixie; urgency=medium
 
   * Enable the LicheeRV Nano's onboard Wi-Fi SDIO host in the DTS without the
     earlier guessed reset/power-sequencing block, which timed out during SDIO
     bring-up on real hardware.
+  * Enable the SG2002 native Ethernet path in the Nano DTS for the
+    Ethernet-capable LicheeRV Nano variants, matching the upstream cv18xx
+    board-level enablement model.
 
- -- Packaging Maintainer <maintainer@example.com>  Mon, 20 Apr 2026 14:20:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 23 May 2026 13:10:00 +0900
 
 linux-cv181x-sodoport (7.0-21) trixie; urgency=medium
 
