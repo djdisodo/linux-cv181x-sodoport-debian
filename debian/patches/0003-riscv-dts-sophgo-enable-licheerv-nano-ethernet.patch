@@ -5,8 +5,8 @@ Last-Update: 2026-05-23
 
 --- a/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
-@@ -126,6 +126,14 @@
- 	no-sd;
+@@ -88,6 +88,14 @@
+ 	disable-wp;
  };
  
 +&gmac0 {

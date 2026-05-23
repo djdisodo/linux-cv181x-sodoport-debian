@@ -1,3 +1,12 @@
+linux-cv181x-sodoport (7.0-24) trixie; urgency=medium
+
+  * Revert the LicheeRV Nano Wi-Fi SDIO DTS enablement for now, because it can
+    still suppress the SD card host during early boot on real hardware.
+  * Keep the Nano native Ethernet DTS enablement on top of the base upstream
+    board description.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sun, 24 May 2026 12:20:00 +0900
+
 linux-cv181x-sodoport (7.0-23) trixie; urgency=medium
 
   * Enable the LicheeRV Nano's onboard Wi-Fi SDIO host in the DTS without the
