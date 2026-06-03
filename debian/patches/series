@@ -1,4 +1,3 @@
 # Add DTS and related board support patches here with `dpkg-source --commit`.
 0001-riscv-dts-sophgo-add-sg2002-milkv-duo256m.patch
-0002-riscv-dts-sophgo-fix-cv18xx-internal-ephy-address.patch
 0003-riscv-dts-sophgo-enable-licheerv-nano-ethernet.patch

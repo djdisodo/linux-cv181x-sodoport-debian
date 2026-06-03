@@ -1,11 +1,11 @@
-linux-cv181x-sodoport (7.0-25) trixie; urgency=medium
+linux-cv181x-sodoport (7.0-26) trixie; urgency=medium
 
-  * Fix the cv18xx internal Ethernet PHY DTS description to use the
-    upstream MDIO address, so phylib reads the real 10/100 capabilities
-    instead of attaching to an invalid generic endpoint and failing
-    phylink validation.
+  * Keep the cv18xx Ethernet description aligned with the reviewed upstream
+    MDIO mux approach by using the generic mdio-mux-mmioreg binding only.
+  * Drop the earlier local internal ePHY address experiment, which was not
+    part of the reviewed series.
 
- -- Packaging Maintainer <maintainer@example.com>  Sun, 24 May 2026 21:00:00 +0900
+ -- Packaging Maintainer <maintainer@example.com>  Tue, 03 Jun 2026 11:40:00 +0900
 
 linux-cv181x-sodoport (7.0-24) trixie; urgency=medium
 
