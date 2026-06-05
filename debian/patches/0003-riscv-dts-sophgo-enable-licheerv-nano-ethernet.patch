@@ -1,7 +1,7 @@
 Description: enable the SG2002 LicheeRV Nano internal Ethernet path
 Origin: upstream, adapted from https://lore.kernel.org/r/20250703021600.125550-4-inochiama@gmail.com
 Forwarded: not-needed
-Last-Update: 2026-05-23
+Last-Update: 2026-06-06
 
 --- a/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
@@ -20,3 +20,14 @@ Last-Update: 2026-05-23
  &uart0 {
  	pinctrl-0 = <&uart0_cfg>;
  	pinctrl-names = "default";
+--- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+@@ -250,7 +250,7 @@
+ 			interrupts = <SOC_PERIPHERAL_IRQ(15) IRQ_TYPE_LEVEL_HIGH>;
+ 			interrupt-names = "macirq";
+ 			phy-handle = <&internal_ephy>;
+-			phy-mode = "internal";
++			phy-mode = "rmii";
+ 			resets = <&rst RST_ETH0>;
+ 			reset-names = "stmmaceth";
+ 			rx-fifo-depth = <8192>;

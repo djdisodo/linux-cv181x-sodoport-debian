@@ -1,3 +1,10 @@
+linux-cv181x-sodoport (7.0-27) trixie; urgency=medium
+
+  * Align the SG2002 internal Ethernet DTS with the RMII interface mode
+    that the bootloader now programs during internal ePHY initialization.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 06 Jun 2026 11:40:00 +0900
+
 linux-cv181x-sodoport (7.0-26) trixie; urgency=medium
 
   * Keep the cv18xx Ethernet description aligned with the reviewed upstream
