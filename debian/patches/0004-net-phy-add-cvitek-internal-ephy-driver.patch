@@ -33,7 +33,7 @@ Last-Update: 2026-06-06
  obj-$(CONFIG_CORTINA_PHY)	+= cortina.o
 --- /dev/null
 +++ b/drivers/net/phy/cvitek.c
-@@ -0,0 +1,319 @@
+@@ -0,0 +1,307 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Driver for the internal cv18xx RMII PHY.
@@ -59,16 +59,6 @@ Last-Update: 2026-06-06
 +
 +static u32 cvitek_link_status;
 +static u32 cvitek_retry_time;
-+
-+static int cvitek_phy_config_intr(struct phy_device *phydev)
-+{
-+	return 0;
-+}
-+
-+static int cvitek_phy_ack_interrupt(struct phy_device *phydev)
-+{
-+	return 0;
-+}
 +
 +static int cvitek_phy_read_status(struct phy_device *phydev)
 +{
@@ -334,8 +324,6 @@ Last-Update: 2026-06-06
 +		.config_init	= cvitek_phy_config_init,
 +		.config_aneg	= cvitek_phy_config_aneg,
 +		.read_status	= cvitek_phy_read_status,
-+		.ack_interrupt	= cvitek_phy_ack_interrupt,
-+		.config_intr	= cvitek_phy_config_intr,
 +		.aneg_done	= genphy_aneg_done,
 +		.suspend	= cvitek_phy_suspend,
 +		.resume		= cvitek_phy_resume,
