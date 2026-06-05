@@ -1,3 +1,11 @@
+linux-cv181x-sodoport (7.0-28) trixie; urgency=medium
+
+  * Add the vendor-style cv18xx internal PHY driver so the Nano and Duo
+    Ethernet path no longer falls back to Generic PHY after the bootloader
+    seeds the internal ePHY ID and RMII mode.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 06 Jun 2026 14:30:00 +0900
+
 linux-cv181x-sodoport (7.0-27) trixie; urgency=medium
 
   * Align the SG2002 internal Ethernet DTS with the RMII interface mode
