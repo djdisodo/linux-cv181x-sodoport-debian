@@ -14,10 +14,10 @@ index 1ff69cf7f..797ff6c33 100644
  dtb-$(CONFIG_ARCH_SOPHGO) += sg2042-evb-v2.dtb
 diff --git a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 new file mode 100644
-index 000000000..b3be2b7bb
+index 000000000..289f39257
 --- /dev/null
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,150 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 +/*
 + * Copyright (C) 2026 Sodo
@@ -94,6 +94,14 @@ index 000000000..b3be2b7bb
 +	no-1-8-v;
 +	no-mmc;
 +	no-sdio;
++	status = "okay";
++};
++
++&gmac0 {
++	status = "okay";
++};
++
++&mdio {
 +	status = "okay";
 +};
 +

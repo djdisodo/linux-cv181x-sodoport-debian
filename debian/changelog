@@ -1,3 +1,11 @@
+linux-cv181x-sodoport (7.0-32) trixie; urgency=medium
+
+  * Enable a minimal VIMC media test module so the packaged kernel ships
+    videobuf2 modules required by out-of-tree CSI capture drivers.
+  * Keep NanoKVM PCIe Ethernet enabled in the packaged board DTB.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Jul 2026 05:18:00 +0900
+
 linux-cv181x-sodoport (7.0-31) trixie; urgency=medium
 
   * Add the SG2002 NanoKVM PCIe board DTB with USB peripheral mode and the
