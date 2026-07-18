@@ -1,4 +1,4 @@
-From 3c039db887215a99d7160d19fdc3e77efe689ce9 Mon Sep 17 00:00:00 2001
+From c4da3fadbb4686481ccbc8e655bbdeb0bac1586a Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.com>
 Date: Sat, 18 Jul 2026 21:19:21 +0900
 Subject: [PATCH] riscv: dts: sophgo: enable LicheeRV Nano Ethernet
@@ -40,3 +40,6 @@ index b1853770d..0075d4295 100644
  &uart0 {
  	pinctrl-0 = <&uart0_cfg>;
  	pinctrl-names = "default";
+-- 
+2.50.0
+

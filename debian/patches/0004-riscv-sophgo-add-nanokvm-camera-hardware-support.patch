@@ -1,4 +1,4 @@
-From a9205920284618a3b2ba209f086bf6afb4399412 Mon Sep 17 00:00:00 2001
+From a8adffe8658c5361616fc53679be741dc1bb0923 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.com>
 Date: Sat, 18 Jul 2026 21:19:36 +0900
 Subject: [PATCH] riscv: sophgo: add NanoKVM camera hardware support
@@ -79,3 +79,6 @@ index c3a2dcf71..0912b4f3e 100644
  		case PIN_CONFIG_BIAS_PULL_DOWN:
  			v &= ~PIN_IO_PULLDOWN;
  			v |= FIELD_PREP(PIN_IO_PULLDOWN, arg);
+-- 
+2.50.0
+

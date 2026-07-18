@@ -1,4 +1,4 @@
-From 89d9157cd4670b23967d3d38725d760acf273a8d Mon Sep 17 00:00:00 2001
+From ef4f897a59987a27e9b743538601bf0bd946b9a7 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.com>
 Date: Sat, 18 Jul 2026 21:19:20 +0900
 Subject: [PATCH] riscv: dts: sophgo: add SG2002 Milk-V Duo 256M
@@ -127,3 +127,6 @@ index 000000000..30c7d7453
 +	dr_mode = "host";
 +	status = "okay";
 +};
+-- 
+2.50.0
+

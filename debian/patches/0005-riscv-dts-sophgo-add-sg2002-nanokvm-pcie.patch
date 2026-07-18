@@ -1,12 +1,12 @@
-From 4ee87d305b3da0510778c53cbcad04efb2118f25 Mon Sep 17 00:00:00 2001
+From c08a12beb68e3d1d97ea46a364972dde0015f5e5 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.com>
 Date: Sat, 18 Jul 2026 21:19:37 +0900
 Subject: [PATCH] riscv: dts: sophgo: add SG2002 NanoKVM PCIe
 
 ---
  arch/riscv/boot/dts/sophgo/Makefile           |   1 +
- .../boot/dts/sophgo/sg2002-nanokvm-pcie.dts   | 297 ++++++++++++++++++
- 2 files changed, 298 insertions(+)
+ .../boot/dts/sophgo/sg2002-nanokvm-pcie.dts   | 292 ++++++++++++++++++
+ 2 files changed, 293 insertions(+)
  create mode 100644 arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 
 diff --git a/arch/riscv/boot/dts/sophgo/Makefile b/arch/riscv/boot/dts/sophgo/Makefile
@@ -23,10 +23,10 @@ index 1ff69cf7f..797ff6c33 100644
  dtb-$(CONFIG_ARCH_SOPHGO) += sg2042-evb-v2.dtb
 diff --git a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 new file mode 100644
-index 000000000..95c3b38cf
+index 000000000..372522f2b
 --- /dev/null
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,292 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 +/*
 + * Copyright (C) 2026 Sodo
@@ -308,12 +308,7 @@ index 000000000..95c3b38cf
 +		status = "okay";
 +
 +		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+
++			port {
 +				csi_in: endpoint {
 +					remote-endpoint = <&lt6911_out>;
 +					clock-lanes = <2>;
@@ -324,3 +319,6 @@ index 000000000..95c3b38cf
 +		};
 +	};
 +};
+-- 
+2.50.0
+

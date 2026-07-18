@@ -1,4 +1,4 @@
-From 93197b988d59d9085e25bf157bac5656fffc5cd8 Mon Sep 17 00:00:00 2001
+From 633abe7b8f865c4cf45fd1a4f3285a6608597f1e Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sat, 18 Jul 2026 22:25:24 +0900
 Subject: [PATCH] riscv: dts: sophgo: enable Wave420L on NanoKVM PCIe
@@ -8,7 +8,7 @@ Subject: [PATCH] riscv: dts: sophgo: enable Wave420L on NanoKVM PCIe
  1 file changed, 4 insertions(+)
 
 diff --git a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
-index 95c3b38cf..d133b215b 100644
+index 372522f2b..af7711073 100644
 --- a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 @@ -241,6 +241,10 @@ &usb {

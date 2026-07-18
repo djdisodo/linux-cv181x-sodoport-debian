@@ -1,4 +1,4 @@
-From 6ccae50328adaca688e8813e5db1fe4fe1eaae7f Mon Sep 17 00:00:00 2001
+From 10a0a19bf2fabeb3729220392ca6a86c6214ad9a Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:26:27 +0900
 Subject: [PATCH 1/2] media: chips-media: add wave420l wave4 VPU driver
@@ -12517,7 +12517,7 @@ index 000000000..2eb47a1be
 2.50.0
 
 
-From 42d889766a41680b8fa1eeeeb1d6276a41c64588 Mon Sep 17 00:00:00 2001
+From 12ec5167ec5b5cd8d9d0e000f77eb7fa0d2321ba Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:30:10 +0900
 Subject: [PATCH 2/2] riscv: dts: sophgo: add wave420l vpu node to cv180x

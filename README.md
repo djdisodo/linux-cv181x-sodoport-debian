@@ -1,7 +1,7 @@
-# Recipe-only Debian packaging for Linux 7.0
+# Recipe-only Debian packaging for Linux 7.1
 
 `linux_recipe/` is a packaging-only Git repository for a Milk-V Duo 256M
-kernel package built from upstream Linux `7.0`, published under the
+kernel package built from upstream Linux `7.1`, published under the
 `cv181x-sodoport` flavour name.
 
 CI and the local `sbuild` wrapper default to Debian 13 (`trixie`) so the
@@ -33,7 +33,7 @@ kernel-facing pieces:
   translated from the Alpine `cv180x.riscv64.config`, with the Alpine
   localversion replaced by the `cv181x-sodoport` flavour suffix.
 - `debian/patches/0001-riscv-dts-sophgo-add-sg2002-milkv-duo256m.patch`
-  carries the board DTS addition for upstream `7.0`.
+  carries the board DTS addition for upstream `7.1`.
 - `debian/config/base/` and `debian/config/fragments/` now hold the
   long-term config inputs. The intended Debian workflow is to replace the
   placeholder `debian-common.fragment` with one generated from the intersection
@@ -55,10 +55,11 @@ gbp import-orig --no-interactive --debian-branch=latest \
 dpkg-buildpackage -us -uc -b -a riscv64
 ```
 
-Once the upstream tree is imported, create or refresh patches with:
+Once the upstream tree is imported, create or refresh patches from committed
+source changes with:
 
 ```sh
-dpkg-source --commit
+git format-patch -1 --stdout <commit> > /path/to/debian/patches/NNNN-description.patch
 ```
 
 To regenerate the checked-in board config from the fragment stack after you
@@ -70,18 +71,18 @@ debian/scripts/update-config.sh /path/to/linux
 
 The Debian outputs are split as follows:
 
-- `linux-image-7.0.0-cv181x-sodoport`: the versioned kernel package, which
-  installs `/boot/vmlinuz-7.0.0-cv181x-sodoport`,
-  `/boot/System.map-7.0.0-cv181x-sodoport`,
-  `/boot/config-7.0.0-cv181x-sodoport`, board DTBs under
-  `/usr/lib/linux-image-7.0.0-cv181x-sodoport/`, and modules under
-  `/lib/modules/7.0.0-cv181x-sodoport/`.
+- `linux-image-7.1.0-cv181x-sodoport`: the versioned kernel package, which
+  installs `/boot/vmlinuz-7.1.0-cv181x-sodoport`,
+  `/boot/System.map-7.1.0-cv181x-sodoport`,
+  `/boot/config-7.1.0-cv181x-sodoport`, board DTBs under
+  `/usr/lib/linux-image-7.1.0-cv181x-sodoport/`, and modules under
+  `/lib/modules/7.1.0-cv181x-sodoport/`.
 - `linux-image-cv181x-sodoport`: an unversioned meta-package that depends on
   the current versioned kernel.
-- `linux-headers-7.0.0-cv181x-sodoport`: the versioned headers package, which
+- `linux-headers-7.1.0-cv181x-sodoport`: the versioned headers package, which
   installs a prepared kernel header tree under
-  `/usr/src/linux-headers-7.0.0-cv181x-sodoport` and the standard
-  `/lib/modules/7.0.0-cv181x-sodoport/{build,source}` symlinks for external
+  `/usr/src/linux-headers-7.1.0-cv181x-sodoport` and the standard
+  `/lib/modules/7.1.0-cv181x-sodoport/{build,source}` symlinks for external
   module builds.
 - `linux-headers-cv181x-sodoport`: an unversioned meta-package that depends on
   the current versioned headers package.

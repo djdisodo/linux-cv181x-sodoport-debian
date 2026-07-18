@@ -26,7 +26,7 @@ Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://www.kernel.org/
 
-Package: linux-image-7.0.0-cv181x-sodoport
+Package: linux-image-7.1.0-cv181x-sodoport
 Architecture: riscv64
 Depends:
  ${misc:Depends},
@@ -36,7 +36,7 @@ Breaks:
  linux-image-cv181x-sodoport (<< 7.0-3)
 Replaces:
  linux-image-cv181x-sodoport (<< 7.0-3)
-Description: Linux kernel image 7.0.0 for the cv181x-sodoport flavour
+Description: Linux kernel image 7.1.0 for the cv181x-sodoport flavour
  Builds an upstream Linux kernel image package for the Milk-V Duo 256M using
  the cv181x-sodoport flavour name. The package installs the versioned kernel
  image under /boot, board device trees under /usr/lib/linux-image-<version>/,
@@ -46,24 +46,24 @@ Package: linux-image-cv181x-sodoport
 Architecture: riscv64
 Depends:
  ${misc:Depends},
- linux-image-7.0.0-cv181x-sodoport (= ${binary:Version})
+ linux-image-7.1.0-cv181x-sodoport (= ${binary:Version})
 Description: Meta-package for the cv181x-sodoport kernel
  Depends on the current versioned cv181x-sodoport kernel package so systems
  can track the latest packaged kernel through normal Debian upgrades.
 
-Package: linux-headers-7.0.0-cv181x-sodoport
+Package: linux-headers-7.1.0-cv181x-sodoport
 Architecture: riscv64
 Depends: ${misc:Depends}
-Description: Linux kernel headers 7.0.0 for the cv181x-sodoport flavour
+Description: Linux kernel headers 7.1.0 for the cv181x-sodoport flavour
  Installs a prepared kernel header tree under
- /usr/src/linux-headers-7.0.0-cv181x-sodoport for out-of-tree module builds,
+ /usr/src/linux-headers-7.1.0-cv181x-sodoport for out-of-tree module builds,
  along with the conventional /lib/modules/<version>/build and source symlinks.
 
 Package: linux-headers-cv181x-sodoport
 Architecture: riscv64
 Depends:
  ${misc:Depends},
- linux-headers-7.0.0-cv181x-sodoport (= ${binary:Version})
+ linux-headers-7.1.0-cv181x-sodoport (= ${binary:Version})
 Description: Meta-package for the cv181x-sodoport kernel headers
  Depends on the current versioned cv181x-sodoport headers package so systems
  can track the latest packaged header tree through normal Debian upgrades.

@@ -2,7 +2,7 @@
 set -e
 exec </dev/null >&2
 
-version="7.0.0-cv181x-sodoport"
+version="7.1.0-cv181x-sodoport"
 image_path="/boot/vmlinuz-$version"
 
 case "${1:-}" in

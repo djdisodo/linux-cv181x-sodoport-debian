@@ -1,3 +1,11 @@
+linux-cv181x-sodoport (7.1-1) trixie; urgency=medium
+
+  * Rebase the cv181x-sodoport kernel on upstream Linux 7.1.
+  * Regenerate the CV181x, NanoKVM PCIe, and Wave420L patch stack from
+    source commits based on Linux 7.1.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Jul 2026 23:30:00 +0900
+
 linux-cv181x-sodoport (7.0-35) trixie; urgency=medium
 
   * Add the Chips&Media Wave420L V4L2 mem2mem codec driver.
