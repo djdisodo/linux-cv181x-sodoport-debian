@@ -1,3 +1,10 @@
+linux-cv181x-sodoport (7.0-35) trixie; urgency=medium
+
+  * Add the Chips&Media Wave420L V4L2 mem2mem codec driver.
+  * Enable the Wave420L HEVC encoder on NanoKVM PCIe.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Jul 2026 22:30:00 +0900
+
 linux-cv181x-sodoport (7.0-34) trixie; urgency=medium
 
   * Build the harmless GC0308 module to select the V4L2 CCI-I2C helper needed
