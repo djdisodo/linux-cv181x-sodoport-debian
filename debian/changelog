@@ -1,3 +1,10 @@
+linux-cv181x-sodoport (7.0-34) trixie; urgency=medium
+
+  * Build the harmless GC0308 module to select the V4L2 CCI-I2C helper needed
+    by the separately packaged LT6911UXE DKMS driver.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Jul 2026 21:50:00 +0900
+
 linux-cv181x-sodoport (7.0-33) trixie; urgency=medium
 
   * Regenerate the kernel patch series from Linux source Git commits.
