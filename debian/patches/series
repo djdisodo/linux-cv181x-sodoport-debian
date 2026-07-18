@@ -1,4 +1,4 @@
-# Add DTS and related board support patches here with `dpkg-source --commit`.
+# Add only patches generated from Linux source commits with `git format-patch`.
 0001-riscv-dts-sophgo-add-sg2002-milkv-duo256m.patch
 0003-riscv-dts-sophgo-enable-licheerv-nano-ethernet.patch
 0005-riscv-dts-sophgo-add-sg2002-nanokvm-pcie.patch

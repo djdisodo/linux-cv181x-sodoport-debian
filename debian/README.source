@@ -24,10 +24,17 @@ Build a binary package:
   dpkg-buildpackage -us -uc -b -a riscv64
 
 Patches are stored in `debian/patches` because the source format is
-`3.0 (quilt)`, but the intended maintainer workflow is to update them from the
-imported source tree with:
+`3.0 (quilt)`. Never edit those patch files by hand and do not generate them
+with `dpkg-source --commit` or `quilt refresh`.
 
-  dpkg-source --commit
+Make kernel changes in a clean Git checkout of the imported upstream source.
+Apply the existing patch series as commits, edit the source, and commit each
+logical change. Export each resulting commit with:
+
+  git format-patch -1 --stdout > /path/to/debian/patches/NNNN-description.patch
+
+Add the generated patch filename to `debian/patches/series`, then verify the
+complete series from a clean source tree with `dpkg-source -b .`.
 
 The initial board config and DTS patch were seeded from the local
 `/root/uboot/sg2002` Alpine package draft and translated into Debian package
