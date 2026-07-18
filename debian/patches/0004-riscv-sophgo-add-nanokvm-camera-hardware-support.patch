@@ -1,0 +1,81 @@
+From a9205920284618a3b2ba209f086bf6afb4399412 Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.com>
+Date: Sat, 18 Jul 2026 21:19:36 +0900
+Subject: [PATCH] riscv: sophgo: add NanoKVM camera hardware support
+
+---
+ arch/riscv/boot/dts/sophgo/cv180x.dtsi    | 18 ++++++++++++++++++
+ arch/riscv/boot/dts/sophgo/cv18xx-reset.h |  4 ++++
+ drivers/pinctrl/sophgo/pinctrl-cv18xx.c   |  8 ++++++++
+ 3 files changed, 30 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+index 61793d182..95c27856c 100644
+--- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+@@ -160,6 +160,24 @@ portd: gpio-controller@0 {
+ 			};
+ 		};
+ 
++		gpio4: gpio@5021000 {
++			compatible = "snps,dw-apb-gpio";
++			reg = <0x5021000 0x1000>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			porte: gpio-controller@0 {
++				compatible = "snps,dw-apb-gpio-port";
++				gpio-controller;
++				#gpio-cells = <2>;
++				ngpios = <32>;
++				reg = <0>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				interrupts = <SOC_PERIPHERAL_IRQ(54) IRQ_TYPE_LEVEL_HIGH>;
++			};
++		};
++
+ 		saradc: adc@30f0000 {
+ 			compatible = "sophgo,cv1800b-saradc";
+ 			reg = <0x030f0000 0x1000>;
+diff --git a/arch/riscv/boot/dts/sophgo/cv18xx-reset.h b/arch/riscv/boot/dts/sophgo/cv18xx-reset.h
+index 7e7c5ca2d..385d4f0ff 100644
+--- a/arch/riscv/boot/dts/sophgo/cv18xx-reset.h
++++ b/arch/riscv/boot/dts/sophgo/cv18xx-reset.h
+@@ -54,6 +54,10 @@
+ #define RST_COMBO_PHY0			58
+ #define RST_SPI_NAND			61
+ #define RST_SE				62
++#define RST_CSIPHY0			70
++#define RST_CSIPHY0_APB		71
++#define RST_CSIPHY1			72
++#define RST_CSIPHY1_APB		73
+ #define RST_UART4			74
+ #define RST_GPIO3			75
+ #define RST_SYSTEM			76
+diff --git a/drivers/pinctrl/sophgo/pinctrl-cv18xx.c b/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
+index c3a2dcf71..0912b4f3e 100644
+--- a/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
++++ b/drivers/pinctrl/sophgo/pinctrl-cv18xx.c
+@@ -262,6 +262,10 @@ static int cv1800_pconf_get(struct pinctrl_dev *pctldev,
+ 	value = readl(cv1800_pinctrl_get_component_addr(priv, &pin->conf));
+ 
+ 	switch (param) {
++	case PIN_CONFIG_BIAS_DISABLE:
++		enabled = !(value & (PIN_IO_PULLUP | PIN_IO_PULLDOWN));
++		arg = 0;
++		break;
+ 	case PIN_CONFIG_BIAS_PULL_DOWN:
+ 		enabled = FIELD_GET(PIN_IO_PULLDOWN, value);
+ 		arg = sophgo_pinctrl_typical_pull_down(pctrl, sp, priv->power_cfg);
+@@ -332,6 +336,10 @@ static int cv1800_pinconf_compute_config(struct sophgo_pinctrl *pctrl,
+ 		u32 arg = pinconf_to_config_argument(configs[i]);
+ 
+ 		switch (param) {
++		case PIN_CONFIG_BIAS_DISABLE:
++			v &= ~(PIN_IO_PULLUP | PIN_IO_PULLDOWN);
++			m |= PIN_IO_PULLUP | PIN_IO_PULLDOWN;
++			break;
+ 		case PIN_CONFIG_BIAS_PULL_DOWN:
+ 			v &= ~PIN_IO_PULLDOWN;
+ 			v |= FIELD_PREP(PIN_IO_PULLDOWN, arg);

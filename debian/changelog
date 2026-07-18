@@ -1,3 +1,13 @@
+linux-cv181x-sodoport (7.0-33) trixie; urgency=medium
+
+  * Regenerate the kernel patch series from Linux source Git commits.
+  * Complete the NanoKVM PCIe camera, I2C, CMA, pinctrl, reset, and USB
+    peripheral-mode Device Tree description.
+  * Stop building the in-tree LT6911UXE driver; it is provided separately by
+    the NanoKVM DKMS package.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sat, 18 Jul 2026 21:25:00 +0900
+
 linux-cv181x-sodoport (7.0-32) trixie; urgency=medium
 
   * Enable a minimal VIMC media test module so the packaged kernel ships

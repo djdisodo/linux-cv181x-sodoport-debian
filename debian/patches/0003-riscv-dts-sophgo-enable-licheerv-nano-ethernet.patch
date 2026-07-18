@@ -1,11 +1,31 @@
-Description: enable the SG2002 LicheeRV Nano internal Ethernet path
-Origin: upstream, adapted from https://lore.kernel.org/r/20250703021600.125550-4-inochiama@gmail.com
-Forwarded: not-needed
-Last-Update: 2026-06-06
+From 3c039db887215a99d7160d19fdc3e77efe689ce9 Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.com>
+Date: Sat, 18 Jul 2026 21:19:21 +0900
+Subject: [PATCH] riscv: dts: sophgo: enable LicheeRV Nano Ethernet
 
+---
+ arch/riscv/boot/dts/sophgo/cv180x.dtsi                | 2 +-
+ arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts | 8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+index 06b0ce5a2..61793d182 100644
+--- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+@@ -250,7 +250,7 @@ gmac0: ethernet@4070000 {
+ 			interrupts = <SOC_PERIPHERAL_IRQ(15) IRQ_TYPE_LEVEL_HIGH>;
+ 			interrupt-names = "macirq";
+ 			phy-handle = <&internal_ephy>;
+-			phy-mode = "internal";
++			phy-mode = "rmii";
+ 			resets = <&rst RST_ETH0>;
+ 			reset-names = "stmmaceth";
+ 			rx-fifo-depth = <8192>;
+diff --git a/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts b/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
+index b1853770d..0075d4295 100644
 --- a/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-licheerv-nano-b.dts
-@@ -88,6 +88,14 @@
+@@ -88,6 +88,14 @@ &sdhci0 {
  	disable-wp;
  };
  
@@ -20,14 +40,3 @@ Last-Update: 2026-06-06
  &uart0 {
  	pinctrl-0 = <&uart0_cfg>;
  	pinctrl-names = "default";
---- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-+++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-@@ -250,7 +250,7 @@
- 			interrupts = <SOC_PERIPHERAL_IRQ(15) IRQ_TYPE_LEVEL_HIGH>;
- 			interrupt-names = "macirq";
- 			phy-handle = <&internal_ephy>;
--			phy-mode = "internal";
-+			phy-mode = "rmii";
- 			resets = <&rst RST_ETH0>;
- 			reset-names = "stmmaceth";
- 			rx-fifo-depth = <8192>;

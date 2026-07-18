@@ -1,4 +1,13 @@
+From 4ee87d305b3da0510778c53cbcad04efb2118f25 Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.com>
+Date: Sat, 18 Jul 2026 21:19:37 +0900
 Subject: [PATCH] riscv: dts: sophgo: add SG2002 NanoKVM PCIe
+
+---
+ arch/riscv/boot/dts/sophgo/Makefile           |   1 +
+ .../boot/dts/sophgo/sg2002-nanokvm-pcie.dts   | 297 ++++++++++++++++++
+ 2 files changed, 298 insertions(+)
+ create mode 100644 arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 
 diff --git a/arch/riscv/boot/dts/sophgo/Makefile b/arch/riscv/boot/dts/sophgo/Makefile
 index 1ff69cf7f..797ff6c33 100644
@@ -14,10 +23,10 @@ index 1ff69cf7f..797ff6c33 100644
  dtb-$(CONFIG_ARCH_SOPHGO) += sg2042-evb-v2.dtb
 diff --git a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
 new file mode 100644
-index 000000000..289f39257
+index 000000000..95c3b38cf
 --- /dev/null
 +++ b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,297 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 +/*
 + * Copyright (C) 2026 Sodo
@@ -41,6 +50,19 @@ index 000000000..289f39257
 +
 +	chosen {
 +		stdout-path = "serial0:115200n8";
++	};
++
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++
++		linux,cma {
++			compatible = "shared-dma-pool";
++			reusable;
++			size = <0x4000000>;
++			linux,cma-default;
++		};
 +	};
 +};
 +
@@ -84,6 +106,70 @@ index 000000000..289f39257
 +			power-source = <3300>;
 +		};
 +	};
++
++	i2c0_cfg: i2c0-cfg {
++		i2c0-pins {
++			pinmux = <PINMUX(PIN_IIC0_SCL, 0)>,
++				 <PINMUX(PIN_IIC0_SDA, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++	};
++
++	i2c4_cfg: i2c4-cfg {
++		i2c4-pins {
++			pinmux = <PINMUX(PIN_PWR_WAKEUP0, 5)>,
++				 <PINMUX(PIN_PWR_BUTTON1, 5)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <1800>;
++		};
++	};
++
++	lt6911_cfg: lt6911-cfg {
++		lt6911-reset-pins {
++			pinmux = <PINMUX(PIN_USB_VBUS_DET, 3)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <1800>;
++		};
++
++		lt6911-hpd-pins {
++			pinmux = <PINMUX(PIN_PWR_GPIO1, 0)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <1800>;
++		};
++	};
++
++	csi_cfg: csi-cfg {
++		csi-pins {
++			pinmux = <PINMUX2(PIN_MIPIRX4N, 0, 1)>,
++				 <PINMUX2(PIN_MIPIRX4P, 0, 1)>,
++				 <PINMUX2(PIN_MIPIRX3N, 0, 1)>,
++				 <PINMUX2(PIN_MIPIRX3P, 0, 1)>,
++				 <PINMUX(PIN_MIPIRX2N, 0)>,
++				 <PINMUX(PIN_MIPIRX2P, 0)>,
++				 <PINMUX(PIN_MIPIRX1N, 0)>,
++				 <PINMUX(PIN_MIPIRX1P, 0)>,
++				 <PINMUX(PIN_MIPIRX0N, 0)>,
++				 <PINMUX(PIN_MIPIRX0P, 0)>;
++			power-source = <1800>;
++			bias-disable;
++		};
++	};
++
++	oled_i2c_cfg: oled-i2c-cfg {
++		oled-i2c-pins {
++			pinmux = <PINMUX(PIN_SPK_EN, 3)>,
++				 <PINMUX(PIN_EMMC_CLK, 3)>,
++				 <PINMUX(PIN_EMMC_DAT3, 3)>;
++			bias-pull-up;
++			drive-strength-microamp = <10800>;
++			power-source = <3300>;
++		};
++	};
 +};
 +
 +&sdhci0 {
@@ -111,22 +197,70 @@ index 000000000..289f39257
 +	status = "okay";
 +};
 +
++&i2c0 {
++	pinctrl-0 = <&i2c0_cfg>;
++	pinctrl-names = "default";
++	clock-frequency = <100000>;
++	status = "okay";
++};
++
++&i2c1 {
++	clock-frequency = <100000>;
++	status = "okay";
++};
++
++&i2c2 {
++	clock-frequency = <100000>;
++	status = "okay";
++};
++
++&i2c3 {
++	clock-frequency = <100000>;
++	status = "okay";
++};
++
 +&i2c4 {
++	pinctrl-0 = <&i2c4_cfg>;
++	pinctrl-names = "default";
 +	clock-frequency = <100000>;
 +	status = "okay";
 +
 +	hdmi-bridge@2b {
 +		compatible = "lontium,lt6911uxe";
 +		reg = <0x2b>;
++		reset-gpios = <&portb 6 GPIO_ACTIVE_LOW>;
++		hpd-gpios = <&porte 1 GPIO_ACTIVE_HIGH>;
++		pinctrl-0 = <&lt6911_cfg>;
++		pinctrl-names = "default";
 +
 +		port {
 +			lt6911_out: endpoint {
 +				remote-endpoint = <&csi_in>;
 +				clock-lanes = <2>;
-+				data-lanes = <0 1 3 4>;
-+				lane-polarities = <1 1 1 1 1>;
++				data-lanes = <4 3 1 0>;
++				lane-polarities = <0 0 0 0 0>;
 +				link-frequencies = /bits/ 64 <600000000>;
 +			};
++		};
++	};
++};
++
++&{/} {
++	i2c-oled {
++		compatible = "i2c-gpio";
++		scl-gpios = <&porta 15 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		sda-gpios = <&porta 27 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		i2c-gpio,delay-us = <5>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++		pinctrl-0 = <&oled_i2c_cfg>;
++		pinctrl-names = "default";
++
++		oled@3c {
++			compatible = "solomon,ssd1306fb-i2c";
++			reg = <0x3c>;
++			reset-gpios = <&porta 22 GPIO_ACTIVE_LOW>;
++			status = "disabled";
 +		};
 +	};
 +};
@@ -141,14 +275,36 @@ index 000000000..289f39257
 +		compatible = "sophgo,sg2002-csi";
 +		reg = <0x0a0c2000 0x1000>,
 +		      <0x0a0d0000 0x1000>,
-+		      <0x0a000000 0x80000>;
-+		reg-names = "csi-mac", "csi-wrap", "vi";
++		      <0x0a000000 0x80000>,
++		      <0x0a0c8000 0x1000>;
++		reg-names = "csi-mac", "csi-wrap", "vi", "vip-sys";
++		pinctrl-0 = <&csi_cfg>;
++		pinctrl-names = "default";
++		interrupt-parent = <&plic>;
++		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "isp";
 +		clocks = <&clk CLK_AXI_VIP>,
++			 <&clk CLK_SRC_VIP_SYS_0>,
 +			 <&clk CLK_CSI_MAC0_VIP>,
 +			 <&clk CLK_CSI0_RX_VIP>,
++			 <&clk CLK_ISP_TOP_VIP>,
++			 <&clk CLK_CSI_BE_VIP>,
++			 <&clk CLK_RAW_VIP>,
 +			 <&clk CLK_CFG_REG_VIP>,
-+			 <&clk CLK_CAM0_VIP>;
-+		resets = <&rst RST_VIPSYS>, <&rst RST_VIP_CAM0>;
++			 <&clk CLK_CAM0_VIP>,
++			 <&clk CLK_SRC_VIP_SYS_2>,
++			 <&clk CLK_SRC_VIP_SYS_3>;
++		clock-names = "axi", "vip-sys0", "csi-mac", "csi-rx",
++			      "isp-top", "csi-be", "raw", "cfg", "cam0",
++			      "vip-sys2", "vip-sys3";
++		resets = <&rst RST_VIPSYS>,
++			 <&rst RST_VIP_CAM0>,
++			 <&rst RST_CSIPHY0>,
++			 <&rst RST_CSIPHY1>,
++			 <&rst RST_CSIPHY0_APB>,
++			 <&rst RST_CSIPHY1_APB>;
++		reset-names = "vipsys", "cam0", "phy0", "phy1",
++			      "phy-apb0", "phy-apb1";
 +		status = "okay";
 +
 +		ports {
@@ -161,8 +317,8 @@ index 000000000..289f39257
 +				csi_in: endpoint {
 +					remote-endpoint = <&lt6911_out>;
 +					clock-lanes = <2>;
-+					data-lanes = <0 1 3 4>;
-+					lane-polarities = <1 1 1 1 1>;
++					data-lanes = <4 3 1 0>;
++					lane-polarities = <0 0 0 0 0>;
 +				};
 +			};
 +		};
