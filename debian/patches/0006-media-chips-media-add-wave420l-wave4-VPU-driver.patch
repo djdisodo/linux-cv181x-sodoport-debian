@@ -1,7 +1,7 @@
-From 10a0a19bf2fabeb3729220392ca6a86c6214ad9a Mon Sep 17 00:00:00 2001
+From d0202102e139d73e87c2915a77770f9639f2dac7 Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:26:27 +0900
-Subject: [PATCH 1/2] media: chips-media: add wave420l wave4 VPU driver
+Subject: [PATCH 1/4] media: chips-media: add wave420l wave4 VPU driver
 
 ---
  .../media/sophgo,cv1800b-wave420l.yaml        |   86 +
@@ -12517,20 +12517,20 @@ index 000000000..2eb47a1be
 2.50.0
 
 
-From 12ec5167ec5b5cd8d9d0e000f77eb7fa0d2321ba Mon Sep 17 00:00:00 2001
+From b034e245b67f048d20a55d8916845e1a0d76acf7 Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:30:10 +0900
-Subject: [PATCH 2/2] riscv: dts: sophgo: add wave420l vpu node to cv180x
+Subject: [PATCH 2/4] riscv: dts: sophgo: add wave420l vpu node to cv180x
 
 ---
  arch/riscv/boot/dts/sophgo/cv180x.dtsi | 25 +++++++++++++++++++++++++
  1 file changed, 25 insertions(+)
 
 diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-index 95c27856c..e3d3f6902 100644
+index 06b0ce5a2..e0c2c0a60 100644
 --- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
 +++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-@@ -466,6 +466,31 @@ usb: usb@4340000 {
+@@ -448,6 +448,31 @@ usb: usb@4340000 {
  			status = "disabled";
  		};
  
@@ -12562,6 +12562,220 @@ index 95c27856c..e3d3f6902 100644
  		rtc@5025000 {
  			compatible = "sophgo,cv1800b-rtc", "syscon";
  			reg = <0x5025000 0x2000>;
+-- 
+2.50.0
+
+
+From 02884bb0f2428f7a68d91c7cfaf49d8a370a32f8 Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.invalid>
+Date: Sat, 18 Jul 2026 23:58:14 +0900
+Subject: [PATCH 3/4] media: chips-media: support packed 4:2:2 Wave4 input
+
+---
+ .../platform/chips-media/wave4/wave4-helper.h |  2 +-
+ .../chips-media/wave4/wave4-vpu-enc.c         | 86 +++++++++++++++++--
+ 2 files changed, 79 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-helper.h b/drivers/media/platform/chips-media/wave4/wave4-helper.h
+index bba13447c..bc14c013a 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-helper.h
++++ b/drivers/media/platform/chips-media/wave4/wave4-helper.h
+@@ -11,7 +11,7 @@
+ #include "wave4-vpu.h"
+ 
+ #define FMT_TYPES	2
+-#define MAX_FMTS	12
++#define MAX_FMTS	16
+ 
+ const char *state_to_str(enum vpu_instance_state state);
+ void wave4_cleanup_instance(struct vpu_instance *inst, struct file *filp);
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
+index 6cbec40ab..91fbca612 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
+@@ -30,6 +30,15 @@ static const struct v4l2_frmsize_stepwise enc_frmsize[FMT_TYPES] = {
+ 	},
+ };
+ 
++static const struct v4l2_frmsize_stepwise enc_packed_frmsize = {
++	.min_width = W4_MIN_ENC_PIC_WIDTH,
++	.max_width = W4_MAX_ENC_PIC_WIDTH,
++	.step_width = W4_ENC_CODEC_STEP_WIDTH,
++	.min_height = W4_MIN_ENC_PIC_HEIGHT,
++	.max_height = W4_MAX_ENC_PIC_HEIGHT,
++	.step_height = W4_ENC_CODEC_STEP_HEIGHT,
++};
++
+ static const struct vpu_format enc_fmt_list[FMT_TYPES][MAX_FMTS] = {
+ 	[VPU_FMT_TYPE_CODEC] = {
+ 		{
+@@ -86,9 +95,47 @@ static const struct vpu_format enc_fmt_list[FMT_TYPES][MAX_FMTS] = {
+ 			.v4l2_pix_fmt = V4L2_PIX_FMT_NV61M,
+ 			.v4l2_frmsize = &enc_frmsize[VPU_FMT_TYPE_RAW],
+ 		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_YUYV,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_UYVY,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_YVYU,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_VYUY,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
+ 	}
+ };
+ 
++static bool wave4_vpu_enc_is_packed_422(u32 pixelformat)
++{
++	return pixelformat == V4L2_PIX_FMT_YUYV ||
++	       pixelformat == V4L2_PIX_FMT_UYVY ||
++	       pixelformat == V4L2_PIX_FMT_YVYU ||
++	       pixelformat == V4L2_PIX_FMT_VYUY;
++}
++
++static void wave4_vpu_enc_update_raw_fmt(struct v4l2_pix_format_mplane *pix_mp,
++					 unsigned int width, unsigned int height,
++					 const struct v4l2_frmsize_stepwise *frmsize)
++{
++	wave4_update_pix_fmt(pix_mp, VPU_FMT_TYPE_RAW, width, height, frmsize);
++
++	if (!wave4_vpu_enc_is_packed_422(pix_mp->pixelformat))
++		return;
++
++	pix_mp->plane_fmt[0].bytesperline = ALIGN(pix_mp->width, 32) * 2;
++	pix_mp->plane_fmt[0].sizeimage =
++		pix_mp->plane_fmt[0].bytesperline * pix_mp->height;
++}
++
+ static int switch_state(struct vpu_instance *inst, enum vpu_instance_state state)
+ {
+ 	switch (state) {
+@@ -273,7 +320,9 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 	if (!info)
+ 		return -EINVAL;
+ 
+-	if (info->mem_planes == 1) {
++	if (wave4_vpu_enc_is_packed_422(inst->src_fmt.pixelformat)) {
++		luma_size = inst->src_fmt.plane_fmt[0].sizeimage;
++	} else if (info->mem_planes == 1) {
+ 		luma_size = stride * inst->dst_fmt.height;
+ 		chroma_size = luma_size / (info->hdiv * info->vdiv);
+ 	} else {
+@@ -304,8 +353,13 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 		if (inst->src_fmt.num_planes == 1) {
+ 			frame_buf.buf_y =
+ 				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
+-			frame_buf.buf_cb = frame_buf.buf_y + luma_size;
+-			frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
++			if (wave4_vpu_enc_is_packed_422(inst->src_fmt.pixelformat)) {
++				frame_buf.buf_cb = 0;
++				frame_buf.buf_cr = 0;
++			} else {
++				frame_buf.buf_cb = frame_buf.buf_y + luma_size;
++				frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
++			}
+ 		} else if (inst->src_fmt.num_planes == 2) {
+ 			frame_buf.buf_y =
+ 				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
+@@ -770,7 +824,10 @@ static int wave4_vpu_enc_try_fmt_out(struct file *file, void *fh, struct v4l2_fo
+ 		width = inst->src_fmt.width;
+ 		height = inst->src_fmt.height;
+ 		f->fmt.pix_mp.pixelformat = inst->src_fmt.pixelformat;
+-		frmsize = &enc_frmsize[VPU_FMT_TYPE_RAW];
++		vpu_fmt = wave4_find_vpu_fmt(f->fmt.pix_mp.pixelformat,
++					     enc_fmt_list[VPU_FMT_TYPE_RAW]);
++		frmsize = vpu_fmt ? vpu_fmt->v4l2_frmsize :
++				     &enc_frmsize[VPU_FMT_TYPE_RAW];
+ 	} else {
+ 		width = f->fmt.pix_mp.width;
+ 		height = f->fmt.pix_mp.height;
+@@ -778,8 +835,7 @@ static int wave4_vpu_enc_try_fmt_out(struct file *file, void *fh, struct v4l2_fo
+ 		frmsize = vpu_fmt->v4l2_frmsize;
+ 	}
+ 
+-	wave4_update_pix_fmt(&f->fmt.pix_mp, VPU_FMT_TYPE_RAW,
+-			     width, height, frmsize);
++	wave4_vpu_enc_update_raw_fmt(&f->fmt.pix_mp, width, height, frmsize);
+ 	return 0;
+ }
+ 
+@@ -1563,10 +1619,24 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
+ 	if (!info)
+ 		return -EINVAL;
+ 
+-	if (info->hdiv == 2 && info->vdiv == 1)
++	open_param->packed_format = NOT_PACKED;
++	if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_YUYV) {
+ 		open_param->src_format = FORMAT_422;
+-	else
++		open_param->packed_format = PACKED_YUYV;
++	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_UYVY) {
++		open_param->src_format = FORMAT_422;
++		open_param->packed_format = PACKED_UYVY;
++	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_YVYU) {
++		open_param->src_format = FORMAT_422;
++		open_param->packed_format = PACKED_YVYU;
++	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_VYUY) {
++		open_param->src_format = FORMAT_422;
++		open_param->packed_format = PACKED_VYUY;
++	} else if (info->hdiv == 2 && info->vdiv == 1) {
++		open_param->src_format = FORMAT_422;
++	} else {
+ 		open_param->src_format = FORMAT_420;
++	}
+ 
+ 	/*
+ 	 * Wave420L firmware on SG2002 is stable with legacy IPP preset.
+-- 
+2.50.0
+
+
+From 00de7b06b0be74a943ebe3080de72853851b0faf Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.invalid>
+Date: Sun, 19 Jul 2026 08:23:16 +0900
+Subject: [PATCH 4/4] media: wave4: do not claim camera subsystem reset
+
+---
+ .../devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml    | 4 ++--
+ arch/riscv/boot/dts/sophgo/cv180x.dtsi                        | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml b/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
+index 27e5d89ac..8f0582486 100644
+--- a/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
++++ b/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
+@@ -80,7 +80,7 @@ examples:
+                       "clk_vc_src1",
+                       "clk_vc_src2",
+                       "clk_cfg_reg_vc";
+-        resets = <&rst 5>, <&rst 6>, <&rst 95>;
+-        reset-names = "h265c", "vipsys", "vcsys";
++        resets = <&rst 5>, <&rst 95>;
++        reset-names = "h265c", "vcsys";
+         sram-size = <0x19400>;
+     };
+diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+index e0c2c0a60..ef4807e56 100644
+--- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+@@ -468,8 +468,8 @@ vpu: video-codec@b020000 {
+ 				      "clk_vc_src1",
+ 				      "clk_vc_src2",
+ 				      "clk_cfg_reg_vc";
+-			resets = <&rst RST_H265C>, <&rst RST_VIPSYS>, <&rst RST_VCSYS>;
+-			reset-names = "h265c", "vipsys", "vcsys";
++			resets = <&rst RST_H265C>, <&rst RST_VCSYS>;
++			reset-names = "h265c", "vcsys";
+ 			status = "disabled";
+ 		};
+ 
 -- 
 2.50.0
 
