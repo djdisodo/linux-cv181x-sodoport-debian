@@ -1,7 +1,7 @@
 From d0202102e139d73e87c2915a77770f9639f2dac7 Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:26:27 +0900
-Subject: [PATCH 1/5] media: chips-media: add wave420l wave4 VPU driver
+Subject: [PATCH 1/6] media: chips-media: add wave420l wave4 VPU driver
 
 ---
  .../media/sophgo,cv1800b-wave420l.yaml        |   86 +
@@ -12520,7 +12520,7 @@ index 000000000..2eb47a1be
 From b034e245b67f048d20a55d8916845e1a0d76acf7 Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:30:10 +0900
-Subject: [PATCH 2/5] riscv: dts: sophgo: add wave420l vpu node to cv180x
+Subject: [PATCH 2/6] riscv: dts: sophgo: add wave420l vpu node to cv180x
 
 ---
  arch/riscv/boot/dts/sophgo/cv180x.dtsi | 25 +++++++++++++++++++++++++
@@ -12569,7 +12569,7 @@ index 06b0ce5a2..e0c2c0a60 100644
 From 02884bb0f2428f7a68d91c7cfaf49d8a370a32f8 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sat, 18 Jul 2026 23:58:14 +0900
-Subject: [PATCH 3/5] media: chips-media: support packed 4:2:2 Wave4 input
+Subject: [PATCH 3/6] media: chips-media: support packed 4:2:2 Wave4 input
 
 ---
  .../platform/chips-media/wave4/wave4-helper.h |  2 +-
@@ -12740,7 +12740,7 @@ index 6cbec40ab..91fbca612 100644
 From 00de7b06b0be74a943ebe3080de72853851b0faf Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sun, 19 Jul 2026 08:23:16 +0900
-Subject: [PATCH 4/5] media: wave4: do not claim camera subsystem reset
+Subject: [PATCH 4/6] media: wave4: do not claim camera subsystem reset
 
 ---
  .../devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml    | 4 ++--
@@ -12783,7 +12783,7 @@ index e0c2c0a60..ef4807e56 100644
 From 6f811b8edf3fd2c170a4fa6c620ae690c6c49f62 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sun, 19 Jul 2026 13:20:49 +0900
-Subject: [PATCH 5/5] media: wave4: report I-frames as keyframes
+Subject: [PATCH 5/6] media: wave4: report I-frames as keyframes
 
 ---
  drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c | 6 +-----
@@ -12806,6 +12806,410 @@ index 91fbca612..ea3a9a254 100644
  		} else if (enc_output_info.pic_type == PIC_TYPE_P) {
  			dst_buf->flags |= V4L2_BUF_FLAG_PFRAME;
  		} else if (enc_output_info.pic_type == PIC_TYPE_B) {
+-- 
+2.50.0
+
+
+From ffef05c8fb21dbc774928682d35b1d6bfb32580d Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.invalid>
+Date: Sun, 19 Jul 2026 14:24:20 +0900
+Subject: [PATCH 6/6] media: wave4: expose only validated encoder controls
+
+---
+ .../platform/chips-media/wave4/wave4-hw.c     |   4 +-
+ .../chips-media/wave4/wave4-vpu-enc.c         | 176 +++++-------------
+ .../platform/chips-media/wave4/wave4-vpuapi.h |   4 +
+ 3 files changed, 53 insertions(+), 131 deletions(-)
+
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-hw.c b/drivers/media/platform/chips-media/wave4/wave4-hw.c
+index 10f225072..5e52992fc 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-hw.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-hw.c
+@@ -2648,7 +2648,9 @@ int wave4_vpu_encode(struct vpu_instance *inst, struct enc_param *option, u32 *f
+ 			      (option->code_option.encode_eob << 7) |
+ 			      (option->code_option.encode_vui << 9));
+ 
+-	vpu_write_reg(inst->dev, W4_CMD_ENC_PIC_PARAM, 0);
++	vpu_write_reg(inst->dev, W4_CMD_ENC_PIC_PARAM,
++		      (option->force_pic_type_enable << 20) |
++		      (option->force_pic_type << 21));
+ 
+ 	if (option->src_end_flag)
+ 		/* no more source images. */
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
+index ea3a9a254..310d7d1f9 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
+@@ -312,6 +312,7 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 	u32 luma_size = 0;
+ 	u32 chroma_size = 0;
+ 	bool src_meta_armed = false;
++	bool force_key_frame = false;
+ 
+ 	memset(&pic_param, 0, sizeof(struct enc_param));
+ 	memset(&frame_buf, 0, sizeof(struct frame_buffer));
+@@ -418,8 +419,16 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 	pic_param.source_frame = &frame_buf;
+ 	pic_param.code_option.implicit_header_encode = 1;
+ 	pic_param.code_option.encode_aud = inst->encode_aud;
++	if (!pic_param.src_end_flag)
++		force_key_frame = atomic_xchg(&inst->force_key_frame, 0);
++	if (force_key_frame) {
++		pic_param.force_pic_type_enable = 1;
++		pic_param.force_pic_type = 3;
++	}
+ 	ret = wave4_vpu_enc_start_one_frame(inst, &pic_param, fail_res);
+ 	if (ret) {
++		if (force_key_frame)
++			atomic_set(&inst->force_key_frame, 1);
+ 		if (src_meta_armed &&
+ 		    wave4_vpu_enc_src_meta_drop_last(p_enc_info, &dropped_meta) &&
+ 		    dropped_meta.idx != src_buf->vb2_buf.index) {
+@@ -1185,9 +1194,11 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
+ 		inst->encode_aud = ctrl->val;
+ 		break;
+ 	case V4L2_CID_HFLIP:
+-		inst->mirror_direction |= (ctrl->val << 1);
++		inst->mirror_direction &= ~BIT(1);
++		inst->mirror_direction |= ctrl->val << 1;
+ 		break;
+ 	case V4L2_CID_VFLIP:
++		inst->mirror_direction &= ~BIT(0);
+ 		inst->mirror_direction |= ctrl->val;
+ 		break;
+ 	case V4L2_CID_ROTATE:
+@@ -1212,7 +1223,9 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
+ 		inst->bit_rate = ctrl->val;
+ 		break;
+ 	case V4L2_CID_MPEG_VIDEO_GOP_SIZE:
+-		inst->enc_param.avc_idr_period = ctrl->val;
++		inst->enc_param.intra_period = ctrl->val;
++		break;
++	case V4L2_CID_MPEG_VIDEO_HEADER_MODE:
+ 		break;
+ 	case V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE:
+ 		inst->enc_param.independ_slice_mode = ctrl->val;
+@@ -1230,6 +1243,9 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
+ 		inst->enc_param.cu_level_rc_enable = ctrl->val;
+ 		inst->enc_param.hvs_qp_enable = ctrl->val;
+ 		break;
++	case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
++		atomic_set(&inst->force_key_frame, 1);
++		break;
+ 	case V4L2_CID_MPEG_VIDEO_HEVC_PROFILE:
+ 		switch (ctrl->val) {
+ 		case V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN:
+@@ -1252,34 +1268,34 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
+ 	case V4L2_CID_MPEG_VIDEO_HEVC_LEVEL:
+ 		switch (ctrl->val) {
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_1:
+-			inst->enc_param.level = 10 * 3;
++			inst->enc_param.level = 10;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_2:
+-			inst->enc_param.level = 20 * 3;
++			inst->enc_param.level = 20;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_2_1:
+-			inst->enc_param.level = 21 * 3;
++			inst->enc_param.level = 21;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_3:
+-			inst->enc_param.level = 30 * 3;
++			inst->enc_param.level = 30;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_3_1:
+-			inst->enc_param.level = 31 * 3;
++			inst->enc_param.level = 31;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_4:
+-			inst->enc_param.level = 40 * 3;
++			inst->enc_param.level = 40;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1:
+-			inst->enc_param.level = 41 * 3;
++			inst->enc_param.level = 41;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5:
+-			inst->enc_param.level = 50 * 3;
++			inst->enc_param.level = 50;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_1:
+-			inst->enc_param.level = 51 * 3;
++			inst->enc_param.level = 51;
+ 			break;
+ 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_2:
+-			inst->enc_param.level = 52 * 3;
++			inst->enc_param.level = 52;
+ 			break;
+ 		default:
+ 			return -EINVAL;
+@@ -1607,9 +1623,6 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
+ {
+ 	struct enc_wave_param input = inst->enc_param;
+ 	const struct v4l2_format_info *info;
+-	u32 codec_level = input.level;
+-	u32 num_ctu_row = ALIGN(inst->dst_fmt.height, 64) / 64;
+-	u32 num_mb_row = ALIGN(inst->dst_fmt.height, 16) / 16;
+ 
+ 	info = v4l2_format_info(inst->src_fmt.pixelformat);
+ 	if (!info)
+@@ -1671,16 +1684,7 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
+ 		open_param->vbv_buffer_size = 3000;
+ 	open_param->wave_param.profile = input.profile;
+ 	open_param->wave_param.en_still_picture = input.en_still_picture;
+-	/*
+-	 * HEVC and H.264 controls share the same internal level field.
+-	 * If userspace doesn't explicitly touch HEVC level after opening,
+-	 * the later H.264 default setup can leave a non-HEVC-coded value here.
+-	 */
+-	if (inst->std == W_HEVC_ENC &&
+-	    (codec_level < 30 || codec_level > 156 || (codec_level % 3)))
+-		codec_level = 30;
+-
+-	open_param->wave_param.level = codec_level;
++	open_param->wave_param.level = input.level;
+ 	open_param->wave_param.internal_bit_depth = inst->bit_depth;
+ 	open_param->wave_param.intra_qp = input.intra_qp;
+ 	open_param->wave_param.min_qp_i = input.min_qp_i;
+@@ -1696,14 +1700,6 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
+ 	open_param->wave_param.beta_offset_div2 = input.beta_offset_div2;
+ 	open_param->wave_param.decoding_refresh_type = input.decoding_refresh_type;
+ 	open_param->wave_param.intra_period = input.intra_period;
+-	if (inst->std == W_HEVC_ENC) {
+-		if (input.intra_period == 0) {
+-			open_param->wave_param.decoding_refresh_type = DEC_REFRESH_TYPE_IDR;
+-			open_param->wave_param.intra_period = input.avc_idr_period;
+-		}
+-	} else {
+-		open_param->wave_param.avc_idr_period = input.avc_idr_period;
+-	}
+ 	open_param->wave_param.entropy_coding_mode = input.entropy_coding_mode;
+ 	open_param->wave_param.lossless_enable = input.lossless_enable;
+ 	open_param->wave_param.const_intra_pred_flag = input.const_intra_pred_flag;
+@@ -1718,37 +1714,10 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
+ 	open_param->wave_param.independ_slice_mode_arg = input.independ_slice_mode_arg;
+ 	open_param->wave_param.avc_slice_mode = input.avc_slice_mode;
+ 	open_param->wave_param.avc_slice_arg = input.avc_slice_arg;
+-	open_param->wave_param.intra_mb_refresh_mode = input.intra_mb_refresh_mode;
+-	if (input.intra_mb_refresh_mode != REFRESH_MB_MODE_NONE) {
+-		if (num_mb_row >= input.intra_mb_refresh_arg)
+-			open_param->wave_param.intra_mb_refresh_arg =
+-				num_mb_row / input.intra_mb_refresh_arg;
+-		else
+-			open_param->wave_param.intra_mb_refresh_arg = num_mb_row;
+-	}
+ 	open_param->wave_param.intra_refresh_mode = input.intra_refresh_mode;
+-	if (input.intra_refresh_mode != 0) {
+-		if (num_ctu_row >= input.intra_refresh_arg)
+-			open_param->wave_param.intra_refresh_arg =
+-				num_ctu_row / input.intra_refresh_arg;
+-		else
+-			open_param->wave_param.intra_refresh_arg = num_ctu_row;
+-	}
++	open_param->wave_param.intra_refresh_arg = input.intra_refresh_arg;
+ 	open_param->wave_param.forced_idr_header_enable = input.forced_idr_header_enable;
+ 
+-	/*
+-	 * Keep Wave4 defaults close to the BSP path.
+-	 * RC is bitrate-driven there, and several advanced toggles are
+-	 * expected to stay conservative unless explicitly tuned.
+-	 */
+-	open_param->rc_enable = open_param->bit_rate ? 1 : 0;
+-	open_param->wave_param.wpp_enable = 0;
+-	open_param->wave_param.sao_enable = 0;
+-	open_param->wave_param.intra_nx_n_enable = 0;
+-	open_param->wave_param.max_num_merge = 2;
+-	open_param->wave_param.tmvp_enable = 1;
+-	open_param->wave_param.cu_level_rc_enable = open_param->rc_enable;
+-	open_param->wave_param.hvs_qp_enable = open_param->rc_enable;
+ 	if (!open_param->rc_enable)
+ 		open_param->wave_param.hvs_qp_scale = 0;
+ 
+@@ -2262,7 +2231,7 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 	v4l2_ctrl_handler_init(v4l2_ctrl_hdl, 50);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			       V4L2_CID_MPEG_VIDEO_HEVC_PROFILE,
+-			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN_10, 0,
++			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN, 0,
+ 			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			       V4L2_CID_MPEG_VIDEO_HEVC_LEVEL,
+@@ -2270,13 +2239,13 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 			       V4L2_MPEG_VIDEO_HEVC_LEVEL_1);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP,
+-			  0, 63, 1, 8);
++			  0, 51, 1, 8);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP,
+-			  0, 63, 1, 51);
++			  0, 51, 1, 51);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP,
+-			  0, 63, 1, 30);
++			  0, 51, 1, 30);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			       V4L2_CID_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE,
+ 			       V4L2_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY, 0,
+@@ -2289,7 +2258,9 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 			  -6, 6, 1, 0);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			       V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_TYPE,
+-			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR, 0,
++			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR,
++			       BIT(V4L2_MPEG_VIDEO_HEVC_REFRESH_NONE) |
++			       BIT(V4L2_MPEG_VIDEO_HEVC_REFRESH_CRA),
+ 			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_PERIOD,
+@@ -2300,62 +2271,10 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_HEVC_CONST_INTRA_PRED,
+ 			  0, 1, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_HEVC_WAVEFRONT,
+-			  0, 1, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_HEVC_STRONG_SMOOTHING,
+-			  0, 1, 1, 1);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_HEVC_MAX_NUM_MERGE_MV_MINUS1,
+-			  1, 2, 1, 2);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_HEVC_TMV_PREDICTION,
+ 			  0, 1, 1, 1);
+ 
+-	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			       V4L2_CID_MPEG_VIDEO_H264_PROFILE,
+-			       V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_444_PREDICTIVE, 0,
+-			       V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE);
+-	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			       V4L2_CID_MPEG_VIDEO_H264_LEVEL,
+-			       V4L2_MPEG_VIDEO_H264_LEVEL_5_1, 0,
+-			       V4L2_MPEG_VIDEO_H264_LEVEL_1_0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_MIN_QP,
+-			  0, 63, 1, 8);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_MAX_QP,
+-			  0, 63, 1, 51);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_I_FRAME_QP,
+-			  0, 63, 1, 30);
+-	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			       V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_MODE,
+-			       V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY, 0,
+-			       V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_ENABLED);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_ALPHA,
+-			  -6, 6, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_BETA,
+-			  -6, 6, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_8X8_TRANSFORM,
+-			  0, 1, 1, 1);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_CONSTRAINED_INTRA_PREDICTION,
+-			  0, 1, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_CHROMA_QP_INDEX_OFFSET,
+-			  -12, 12, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_H264_I_PERIOD,
+-			  0, 2047, 1, 0);
+-	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			       V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE,
+-			       V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CABAC, 0,
+-			       V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_AU_DELIMITER,
+ 			  0, 1, 1, 1);
+@@ -2365,15 +2284,13 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_VFLIP,
+ 			  0, 1, 1, 0);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_ROTATE,
+-			  0, 270, 90, 0);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_VBV_SIZE,
+ 			  10, 3000, 1, 1000);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			       V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
+-			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR, 0,
++			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR,
++			       BIT(V4L2_MPEG_VIDEO_BITRATE_MODE_VBR),
+ 			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_BITRATE,
+@@ -2382,12 +2299,13 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 			  V4L2_CID_MPEG_VIDEO_GOP_SIZE,
+ 			  0, 2047, 1, 0);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			       V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE,
+-			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_MB, 0,
+-			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE);
++			       V4L2_CID_MPEG_VIDEO_HEADER_MODE,
++			       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME,
++			       BIT(V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE),
++			       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB,
+-			  0, 0xFFFF, 1, 0);
++			  V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME,
++			  0, 0, 0, 0);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE,
+ 			  0, 1, 1, 0);
+@@ -2396,9 +2314,6 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 			  0, 1, 1, 0);
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MIN_BUFFERS_FOR_OUTPUT, 1, 32, 1, 1);
+-	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
+-			  V4L2_CID_MPEG_VIDEO_PREPEND_SPSPPS_TO_IDR,
+-			  0, 1, 1, 0);
+ 
+ 	if (v4l2_ctrl_hdl->error) {
+ 		ret = -ENODEV;
+@@ -2406,6 +2321,7 @@ static int wave4_vpu_open_enc(struct file *filp)
+ 	}
+ 
+ 	inst->v4l2_fh.ctrl_handler = v4l2_ctrl_hdl;
++	atomic_set(&inst->force_key_frame, 0);
+ 	v4l2_ctrl_handler_setup(v4l2_ctrl_hdl);
+ 
+ 	wave4_set_default_format(&inst->src_fmt, &inst->dst_fmt);
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
+index 4d06bc695..5fa310870 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
+@@ -8,6 +8,7 @@
+ #ifndef VPUAPI_H_INCLUDED
+ #define VPUAPI_H_INCLUDED
+ 
++#include <linux/atomic.h>
+ #include <linux/kfifo.h>
+ #include <linux/idr.h>
+ #include <linux/genalloc.h>
+@@ -610,6 +611,8 @@ struct enc_param {
+ 	u32 pic_stream_buffer_addr;
+ 	u64 pic_stream_buffer_size;
+ 	u32 src_idx; /* source frame buffer index */
++	u32 force_pic_type: 3;
++	u32 force_pic_type_enable: 1;
+ 	struct enc_code_opt code_option;
+ 	u64 pts; /* presentation timestamp (PTS) of the input source */
+ 	bool src_end_flag;
+@@ -853,6 +856,7 @@ struct vpu_instance {
+ 	unsigned int rc_enable;
+ 	unsigned int bit_rate;
+ 	unsigned int encode_aud;
++	atomic_t force_key_frame;
+ 	struct enc_wave_param enc_param;
+ };
+ 
 -- 
 2.50.0
 
