@@ -360,3 +360,35 @@ index 90b4a41a0..897a764f1 100644
 -- 
 2.50.0
 
+From 5fad99d2d52fd04f19b21bc6e7f49de3fd03e179 Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.invalid>
+Date: Sun, 19 Jul 2026 10:48:20 +0900
+Subject: [PATCH] riscv: dts: sophgo: enable NanoKVM PCIe OLED
+
+---
+ arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
+index 897a764f1..625f975dc 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
++++ b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
+@@ -218,10 +218,13 @@ i2c-oled {
+ 		pinctrl-names = "default";
+ 
+ 		oled@3c {
+-			compatible = "solomon,ssd1306fb-i2c";
++			compatible = "solomon,ssd1306";
+ 			reg = <0x3c>;
+ 			reset-gpios = <&porta 22 GPIO_ACTIVE_LOW>;
+-			status = "disabled";
++			solomon,width = <64>;
++			solomon,height = <32>;
++			solomon,col-offset = <32>;
++			solomon,page-offset = <0>;
+ 		};
+ 	};
+ };
+-- 
+2.50.0
+

@@ -1,3 +1,10 @@
+linux-cv181x-sodoport (7.1-2) trixie; urgency=medium
+
+  * Disable unused NanoKVM PCIe I2C controllers.
+  * Enable the NanoKVM PCIe 64x32 SSD1306 status OLED through DRM.
+
+ -- Packaging Maintainer <maintainer@example.com>  Sun, 19 Jul 2026 10:51:08 +0900
+
 linux-cv181x-sodoport (7.1-1) trixie; urgency=medium
 
   * Rebase the cv181x-sodoport kernel on upstream Linux 7.1.
