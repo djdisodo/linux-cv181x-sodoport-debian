@@ -322,3 +322,41 @@ index 000000000..372522f2b
 -- 
 2.50.0
 
+From 9cc16d7aabecd7299e2effe3960a977588f98337 Mon Sep 17 00:00:00 2001
+From: Sodo <sodo@example.invalid>
+Date: Sun, 19 Jul 2026 09:47:42 +0900
+Subject: [PATCH] riscv: dts: sophgo: disable unused NanoKVM I2C buses
+
+---
+ .../riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts | 15 ---------------
+ 1 file changed, 15 deletions(-)
+
+diff --git a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
+index 90b4a41a0..897a764f1 100644
+--- a/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
++++ b/arch/riscv/boot/dts/sophgo/sg2002-nanokvm-pcie.dts
+@@ -180,21 +180,6 @@ &i2c0 {
+ 	status = "okay";
+ };
+ 
+-&i2c1 {
+-	clock-frequency = <100000>;
+-	status = "okay";
+-};
+-
+-&i2c2 {
+-	clock-frequency = <100000>;
+-	status = "okay";
+-};
+-
+-&i2c3 {
+-	clock-frequency = <100000>;
+-	status = "okay";
+-};
+-
+ &i2c4 {
+ 	pinctrl-0 = <&i2c4_cfg>;
+ 	pinctrl-names = "default";
+-- 
+2.50.0
+
