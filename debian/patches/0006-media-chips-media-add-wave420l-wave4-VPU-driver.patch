@@ -1,7 +1,7 @@
-From d0202102e139d73e87c2915a77770f9639f2dac7 Mon Sep 17 00:00:00 2001
+From 4077b2a3c82766a59b322d3e790cdc07422b0ebd Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:26:27 +0900
-Subject: [PATCH 1/6] media: chips-media: add wave420l wave4 VPU driver
+Subject: [PATCH 1/7] media: chips-media: add wave420l wave4 VPU driver
 
 ---
  .../media/sophgo,cv1800b-wave420l.yaml        |   86 +
@@ -12517,10 +12517,10 @@ index 000000000..2eb47a1be
 2.50.0
 
 
-From b034e245b67f048d20a55d8916845e1a0d76acf7 Mon Sep 17 00:00:00 2001
+From dcad5a49f1c2c83eeb9ff0c4ad68a0ab060c6042 Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
 Date: Fri, 10 Apr 2026 18:30:10 +0900
-Subject: [PATCH 2/6] riscv: dts: sophgo: add wave420l vpu node to cv180x
+Subject: [PATCH 2/7] riscv: dts: sophgo: add wave420l vpu node to cv180x
 
 ---
  arch/riscv/boot/dts/sophgo/cv180x.dtsi | 25 +++++++++++++++++++++++++
@@ -12566,10 +12566,10 @@ index 06b0ce5a2..e0c2c0a60 100644
 2.50.0
 
 
-From 02884bb0f2428f7a68d91c7cfaf49d8a370a32f8 Mon Sep 17 00:00:00 2001
+From e7f4d6a3f922d2e666464167802d714bd90a1bca Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sat, 18 Jul 2026 23:58:14 +0900
-Subject: [PATCH 3/6] media: chips-media: support packed 4:2:2 Wave4 input
+Subject: [PATCH 3/7] media: chips-media: support packed 4:2:2 Wave4 input
 
 ---
  .../platform/chips-media/wave4/wave4-helper.h |  2 +-
@@ -12737,10 +12737,10 @@ index 6cbec40ab..91fbca612 100644
 2.50.0
 
 
-From 00de7b06b0be74a943ebe3080de72853851b0faf Mon Sep 17 00:00:00 2001
+From e226e6adaacf3c67181939efea9364f8cff269df Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sun, 19 Jul 2026 08:23:16 +0900
-Subject: [PATCH 4/6] media: wave4: do not claim camera subsystem reset
+Subject: [PATCH 4/7] media: wave4: do not claim camera subsystem reset
 
 ---
  .../devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml    | 4 ++--
@@ -12780,10 +12780,10 @@ index e0c2c0a60..ef4807e56 100644
 2.50.0
 
 
-From 6f811b8edf3fd2c170a4fa6c620ae690c6c49f62 Mon Sep 17 00:00:00 2001
+From 92d9b833f700153bec57fddc2b26b47c66a8c419 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sun, 19 Jul 2026 13:20:49 +0900
-Subject: [PATCH 5/6] media: wave4: report I-frames as keyframes
+Subject: [PATCH 5/7] media: wave4: report I-frames as keyframes
 
 ---
  drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c | 6 +-----
@@ -12810,10 +12810,10 @@ index 91fbca612..ea3a9a254 100644
 2.50.0
 
 
-From ffef05c8fb21dbc774928682d35b1d6bfb32580d Mon Sep 17 00:00:00 2001
+From f837eb45e6213cf516aa5aa5bad88ad7bffe4021 Mon Sep 17 00:00:00 2001
 From: Sodo <sodo@example.invalid>
 Date: Sun, 19 Jul 2026 14:24:20 +0900
-Subject: [PATCH 6/6] media: wave4: expose only validated encoder controls
+Subject: [PATCH 6/7] media: wave4: expose only validated encoder controls
 
 ---
  .../platform/chips-media/wave4/wave4-hw.c     |   4 +-
@@ -13210,6 +13210,177 @@ index 4d06bc695..5fa310870 100644
  	struct enc_wave_param enc_param;
  };
  
+-- 
+2.50.0
+
+
+From 2672d281a8eb954a1b94563c41b4f825a6e7c515 Mon Sep 17 00:00:00 2001
+From: sodo <djdisodo@gmail.com>
+Date: Mon, 20 Jul 2026 10:49:28 +0900
+Subject: [PATCH 7/7] media: chips-media: stabilize Wave420L CBR encoding
+
+---
+ .../platform/chips-media/wave4/wave4-helper.c |  6 ++++-
+ .../platform/chips-media/wave4/wave4-hw.c     | 10 ++++++---
+ .../chips-media/wave4/wave4-vpu-enc.c         | 22 ++++++++++++-------
+ .../platform/chips-media/wave4/wave4-vpu.c    |  5 +++++
+ .../platform/chips-media/wave4/wave4-vpuapi.h |  4 ++++
+ 5 files changed, 35 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-helper.c b/drivers/media/platform/chips-media/wave4/wave4-helper.c
+index 9164a0265..39c7cdc4d 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-helper.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-helper.c
+@@ -5,9 +5,13 @@
+  * Copyright (C) 2021-2023 CHIPS&MEDIA INC
+  */
+ 
++#include <linux/sizes.h>
++
+ #include "wave4-helper.h"
+ 
+-#define DEFAULT_BS_SIZE(width, height) ((width) * (height) / 8 * 3)
++#define WAVE4_MIN_BS_SIZE	SZ_4M
++#define DEFAULT_BS_SIZE(width, height) \
++	max_t(size_t, (width) * (height) / 8 * 3, WAVE4_MIN_BS_SIZE)
+ 
+ const char *state_to_str(enum vpu_instance_state state)
+ {
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-hw.c b/drivers/media/platform/chips-media/wave4/wave4-hw.c
+index 5e52992fc..09477eec9 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-hw.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-hw.c
+@@ -2096,9 +2096,12 @@ int wave4_vpu_enc_init_seq(struct vpu_instance *inst)
+ 		reg_val = (rc_enabled << 0) |
+ 			  (p_param->cu_level_rc_enable << 1) |
+ 			  (p_param->hvs_qp_enable << 2) |
+-			  (!!p_param->hvs_qp_scale << 3) |
++			  (!!p_param->hvs_qp_enable && !!p_param->hvs_qp_scale) << 3 |
+ 			  (p_param->hvs_qp_scale << 4) |
+-			  ((p_param->initial_rc_qp & 0x3f) << 14);
++			  (p_param->bit_alloc_mode << 7) |
++			  (p_param->init_buf_level_x8 << 9) |
++			  ((p_param->initial_rc_qp & 0x3f) << 14) |
++			  (p_open_param->initial_delay << 20);
+ 		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_PARAM, reg_val);
+ 
+ 		vpu_write_reg(inst->dev, W4_CMD_ENC_SEQ_INTRA_PARAM,
+@@ -2153,7 +2156,8 @@ int wave4_vpu_enc_init_seq(struct vpu_instance *inst)
+ 			      (p_param->nr_inter_weight_cr << 25));
+ 		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TARGET_RATE,
+ 			      p_open_param->bit_rate);
+-		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TRANS_RATE, 0);
++		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TRANS_RATE,
++			      p_param->trans_rate);
+ 		vpu_write_reg(inst->dev, W4_CMD_ENC_ROT_PARAM, rot_mir_mode);
+ 		vpu_write_reg(inst->dev, W4_CMD_ENC_NUM_UNITS_IN_TICK, 0);
+ 		vpu_write_reg(inst->dev, W4_CMD_ENC_TIME_SCALE, 0);
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
+index 310d7d1f9..e99371f7c 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
+@@ -465,7 +465,7 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 			__func__);
+ 	}
+ 
+-	return 0;
++	return ret;
+ }
+ 
+ static void wave4_vpu_enc_put_async_pm(struct vpu_instance *inst)
+@@ -1670,16 +1670,22 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
+ 	open_param->pic_height = inst->conf_win.height;
+ 	open_param->frame_rate_info = inst->frame_rate;
+ 	open_param->rc_enable = inst->rc_enable;
++	open_param->bit_rate = inst->bit_rate;
++	open_param->vbv_buffer_size = inst->vbv_buf_size;
+ 	if (inst->rc_enable) {
+-		open_param->wave_param.initial_rc_qp = -1;
++		/* Match the Wave420L firmware RC buffer model used by the BSP. */
++		open_param->initial_delay = inst->vbv_buf_size;
++		open_param->wave_param.initial_rc_qp = 63;
++		open_param->wave_param.init_buf_level_x8 = 1;
++		open_param->wave_param.bit_alloc_mode = 1;
++		if (inst->rc_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR)
++			open_param->wave_param.trans_rate = inst->bit_rate;
+ 		open_param->wave_param.rc_weight_param = 16;
+ 		open_param->wave_param.rc_weight_buf = 128;
+ 	}
+ 	open_param->wave_param.mb_level_rc_enable = input.mb_level_rc_enable;
+ 	open_param->wave_param.cu_level_rc_enable = input.cu_level_rc_enable;
+ 	open_param->wave_param.hvs_qp_enable = input.hvs_qp_enable;
+-	open_param->bit_rate = inst->bit_rate;
+-	open_param->vbv_buffer_size = inst->vbv_buf_size;
+ 	if (inst->rc_mode == 0)
+ 		open_param->vbv_buffer_size = 3000;
+ 	open_param->wave_param.profile = input.profile;
+@@ -2114,8 +2120,6 @@ static void wave4_vpu_enc_device_run(void *priv)
+ 
+ 		ret = start_encode(inst, &fail_res);
+ 		if (ret) {
+-			wave4_vpu_enc_put_async_pm(inst);
+-
+ 			if (ret == -EINVAL)
+ 				dev_err(inst->dev->dev,
+ 					"Frame encoding on m2m context (%p), fail: %d (res: %d)\n",
+@@ -2132,8 +2136,10 @@ static void wave4_vpu_enc_device_run(void *priv)
+ 		break;
+ 	}
+ 	dev_dbg(inst->dev->dev, "%s: leave and finish job", __func__);
+-	wave4_vpu_enc_put_async_pm(inst);
+-	pm_runtime_put_autosuspend(inst->dev->dev);
++	if (READ_ONCE(p_enc_info->async_pm_ref_held))
++		wave4_vpu_enc_put_async_pm(inst);
++	else
++		pm_runtime_put_autosuspend(inst->dev->dev);
+ 	v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
+ }
+ 
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu.c b/drivers/media/platform/chips-media/wave4/wave4-vpu.c
+index 28bc4972e..a0fe6e277 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-vpu.c
++++ b/drivers/media/platform/chips-media/wave4/wave4-vpu.c
+@@ -35,6 +35,7 @@
+ #define W4_INT_SET_PARAM_SEQ		BIT(1)
+ #define W4_INT_PIC_RUN			BIT(3)
+ #define W4_INT_QUERY			BIT(9)
++#define W4_INT_BSBUF_FULL		BIT(15)
+ #define W4_POLL_INTERVAL_MS		5
+ /*
+  * Wave420L-specific capability map observed on SG2002:
+@@ -121,6 +122,10 @@ static void wave4_vpu_handle_irq(void *dev_id)
+ 	 * when one bank holds stale non-PIC bits.
+ 	 */
+ 	irq_reason = irq_reason_usr | irq_reason_hw;
++	if (irq_reason & W4_INT_BSBUF_FULL)
++		dev_warn_ratelimited(dev->dev,
++				     "encoder bitstream buffer full (reason=%#x)\n",
++				     irq_reason);
+ 	if (irq_reason)
+ 		wave4_vdi_write_register(dev, W4_VPU_VINT_REASON_CLR, irq_reason);
+ 	wave4_vdi_write_register(dev, W4_VPU_VINT_CLEAR, 0x1);
+diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
+index 5fa310870..34db9255c 100644
+--- a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
+@@ -514,6 +514,9 @@ struct enc_wave_param {
+ 	s32 tc_offset_div2: 4; /* sets tc_offset_div3 for deblocking filter */
+ 	u32 hvs_qp_scale: 4; /* QP scaling factor for CU QP adjust if hvs_qp_scale_enable is 1 */
+ 	u32 hvs_max_delta_qp; /* maximum delta QP for HVS */
++	u32 init_buf_level_x8; /* initial RC buffer fullness in eighths */
++	u32 bit_alloc_mode; /* picture bit allocation mode */
++	u32 trans_rate; /* peak transmission bitrate in bits per second */
+ 	s32 chroma_cb_qp_offset; /* the value of chroma(cb) QP offset */
+ 	s32 chroma_cr_qp_offset; /* the value of chroma(cr) QP offset */
+ 	s32 initial_rc_qp;
+@@ -574,6 +577,7 @@ struct enc_open_param {
+ 	u32 pic_height; /* height of a picture to be encoded in unit of sample */
+ 	u32 frame_rate_info;/* desired fps */
+ 	u32 vbv_buffer_size;
++	u32 initial_delay; /* initial CPB removal delay in milliseconds */
+ 	u32 bit_rate; /* target bitrate in bps */
+ 	struct enc_wave_param wave_param;
+ 	enum packed_format_num packed_format; /* <<vpuapi_h_packed_format_num>> */
 -- 
 2.50.0
 
