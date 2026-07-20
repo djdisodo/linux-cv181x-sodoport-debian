@@ -1,30 +1,32 @@
-From 4077b2a3c82766a59b322d3e790cdc07422b0ebd Mon Sep 17 00:00:00 2001
+From 5fef44032f1553ed6349f6b97a6190866d4ab7b9 Mon Sep 17 00:00:00 2001
 From: sodo <djdisodo@gmail.com>
-Date: Fri, 10 Apr 2026 18:26:27 +0900
-Subject: [PATCH 1/7] media: chips-media: add wave420l wave4 VPU driver
+Date: Mon, 20 Jul 2026 11:40:12 +0900
+Subject: [PATCH] media: chips-media: add Wave420L Wave4 VPU driver
 
+Add CV180x Wave420L support to the Chips&Media Wave4 V4L2 driver, including packed capture formats, validated encoder controls, stable CBR recovery, and hardware interrupt-driven command and frame completion.
 ---
  .../media/sophgo,cv1800b-wave420l.yaml        |   86 +
+ arch/riscv/boot/dts/sophgo/cv180x.dtsi        |   25 +
  drivers/media/platform/chips-media/Kconfig    |    1 +
  drivers/media/platform/chips-media/Makefile   |    1 +
  .../media/platform/chips-media/wave4/Kconfig  |   15 +
  .../media/platform/chips-media/wave4/Makefile |   10 +
- .../platform/chips-media/wave4/wave4-helper.c |  258 ++
+ .../platform/chips-media/wave4/wave4-helper.c |  262 ++
  .../platform/chips-media/wave4/wave4-helper.h |   37 +
- .../platform/chips-media/wave4/wave4-hw.c     | 3197 +++++++++++++++++
- .../chips-media/wave4/wave4-regdefine.h       |  820 +++++
+ .../platform/chips-media/wave4/wave4-hw.c     | 3186 +++++++++++++++++
+ .../chips-media/wave4/wave4-regdefine.h       |  825 +++++
  .../platform/chips-media/wave4/wave4-vdi.c    |  229 ++
  .../platform/chips-media/wave4/wave4-vdi.h    |   36 +
- .../chips-media/wave4/wave4-vpu-dec.c         | 1999 +++++++++++
- .../chips-media/wave4/wave4-vpu-enc.c         | 2443 +++++++++++++
- .../platform/chips-media/wave4/wave4-vpu.c    |  716 ++++
+ .../chips-media/wave4/wave4-vpu-dec.c         | 1997 +++++++++++
+ .../chips-media/wave4/wave4-vpu-enc.c         | 2430 +++++++++++++
+ .../platform/chips-media/wave4/wave4-vpu.c    |  713 ++++
  .../platform/chips-media/wave4/wave4-vpu.h    |   85 +
  .../platform/chips-media/wave4/wave4-vpuapi.c | 1008 ++++++
- .../platform/chips-media/wave4/wave4-vpuapi.h |  904 +++++
+ .../platform/chips-media/wave4/wave4-vpuapi.h |  914 +++++
  .../chips-media/wave4/wave4-vpuconfig.h       |   83 +
  .../chips-media/wave4/wave4-vpuerror.h        |  292 ++
  .../media/platform/chips-media/wave4/wave4.h  |  123 +
- 20 files changed, 12343 insertions(+)
+ 21 files changed, 12358 insertions(+)
  create mode 100644 Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
  create mode 100644 drivers/media/platform/chips-media/wave4/Kconfig
  create mode 100644 drivers/media/platform/chips-media/wave4/Makefile
@@ -46,7 +48,7 @@ Subject: [PATCH 1/7] media: chips-media: add wave420l wave4 VPU driver
 
 diff --git a/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml b/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
 new file mode 100644
-index 000000000..27e5d89ac
+index 000000000..be54fb046
 --- /dev/null
 +++ b/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
 @@ -0,0 +1,86 @@
@@ -122,7 +124,7 @@ index 000000000..27e5d89ac
 +    vpu: video-codec@b020000 {
 +        compatible = "sophgo,cv1800b-wave420l";
 +        reg = <0x0b020000 0x10000>;
-+        interrupts = <38>;
++        interrupts = <22>;
 +        clocks = <&clk 137>, <&clk 143>, <&clk 144>,
 +                 <&clk 145>, <&clk 146>, <&clk 147>, <&clk 148>;
 +        clock-names = "clk_axi_video_codec",
@@ -132,10 +134,46 @@ index 000000000..27e5d89ac
 +                      "clk_vc_src1",
 +                      "clk_vc_src2",
 +                      "clk_cfg_reg_vc";
-+        resets = <&rst 5>, <&rst 6>, <&rst 95>;
-+        reset-names = "h265c", "vipsys", "vcsys";
++        resets = <&rst 5>, <&rst 95>;
++        reset-names = "h265c", "vcsys";
 +        sram-size = <0x19400>;
 +    };
+diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+index 06b0ce5a2..cbf54565b 100644
+--- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
++++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
+@@ -448,6 +448,31 @@ usb: usb@4340000 {
+ 			status = "disabled";
+ 		};
+ 
++		vpu: video-codec@b020000 {
++			compatible = "sophgo,cv1800b-wave420l";
++			reg = <0x0b020000 0x10000>;
++			interrupts = <SOC_PERIPHERAL_IRQ(6) IRQ_TYPE_LEVEL_HIGH>;
++			sram-size = <0x19400>;
++			sophgo,syscon = <&syscon>;
++			clocks = <&clk CLK_AXI_VIDEO_CODEC>,
++				 <&clk CLK_H265C>,
++				 <&clk CLK_APB_H265C>,
++				 <&clk CLK_VC_SRC0>,
++				 <&clk CLK_VC_SRC1>,
++				 <&clk CLK_VC_SRC2>,
++				 <&clk CLK_CFG_REG_VC>;
++			clock-names = "clk_axi_video_codec",
++				      "clk_h265c",
++				      "clk_apb_h265c",
++				      "clk_vc_src0",
++				      "clk_vc_src1",
++				      "clk_vc_src2",
++				      "clk_cfg_reg_vc";
++			resets = <&rst RST_H265C>, <&rst RST_VCSYS>;
++			reset-names = "h265c", "vcsys";
++			status = "disabled";
++		};
++
+ 		rtc@5025000 {
+ 			compatible = "sophgo,cv1800b-rtc", "syscon";
+ 			reg = <0x5025000 0x2000>;
 diff --git a/drivers/media/platform/chips-media/Kconfig b/drivers/media/platform/chips-media/Kconfig
 index ad350eb6b..9c5c106b6 100644
 --- a/drivers/media/platform/chips-media/Kconfig
@@ -195,10 +233,10 @@ index 000000000..6b31fb890
 +		wave4-helper.o
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-helper.c b/drivers/media/platform/chips-media/wave4/wave4-helper.c
 new file mode 100644
-index 000000000..9164a0265
+index 000000000..39c7cdc4d
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-helper.c
-@@ -0,0 +1,258 @@
+@@ -0,0 +1,262 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
 +/*
 + * Wave4 series multi-standard codec IP - decoder interface
@@ -206,9 +244,13 @@ index 000000000..9164a0265
 + * Copyright (C) 2021-2023 CHIPS&MEDIA INC
 + */
 +
++#include <linux/sizes.h>
++
 +#include "wave4-helper.h"
 +
-+#define DEFAULT_BS_SIZE(width, height) ((width) * (height) / 8 * 3)
++#define WAVE4_MIN_BS_SIZE	SZ_4M
++#define DEFAULT_BS_SIZE(width, height) \
++	max_t(size_t, (width) * (height) / 8 * 3, WAVE4_MIN_BS_SIZE)
 +
 +const char *state_to_str(enum vpu_instance_state state)
 +{
@@ -459,7 +501,7 @@ index 000000000..9164a0265
 +}
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-helper.h b/drivers/media/platform/chips-media/wave4/wave4-helper.h
 new file mode 100644
-index 000000000..bba13447c
+index 000000000..bc14c013a
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-helper.h
 @@ -0,0 +1,37 @@
@@ -476,7 +518,7 @@ index 000000000..bba13447c
 +#include "wave4-vpu.h"
 +
 +#define FMT_TYPES	2
-+#define MAX_FMTS	12
++#define MAX_FMTS	16
 +
 +const char *state_to_str(enum vpu_instance_state state);
 +void wave4_cleanup_instance(struct vpu_instance *inst, struct file *filp);
@@ -502,10 +544,10 @@ index 000000000..bba13447c
 +#endif
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-hw.c b/drivers/media/platform/chips-media/wave4/wave4-hw.c
 new file mode 100644
-index 000000000..10f225072
+index 000000000..60de7f2c3
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-hw.c
-@@ -0,0 +1,3197 @@
+@@ -0,0 +1,3186 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
 +/*
 + * Wave4 series multi-standard codec IP - wave4 backend logic
@@ -926,11 +968,25 @@ index 000000000..10f225072
 +	return 0;
 +}
 +
++static int wave4_wait_command_interrupt(struct vpu_instance *inst)
++{
++	unsigned long timeout;
++
++	timeout = wait_for_completion_timeout(&inst->command_done,
++					      usecs_to_jiffies(VPU_BUSY_CHECK_TIMEOUT));
++	WRITE_ONCE(inst->command_irq_mask, 0);
++
++	if (!timeout)
++		return -ETIMEDOUT;
++
++	return 0;
++}
++
 +static int send_firmware_command(struct vpu_instance *inst, u32 cmd, bool check_success,
 +				 u32 *queue_status, u32 *fail_result)
 +{
-+	ktime_t start;
 +	int ret;
++	u32 command_irq_mask = 0;
 +	u32 int_sts = vpu_read_reg(inst->dev, W4_VPU_VPU_INT_STS);
 +	u32 reason = vpu_read_reg(inst->dev, W4_VPU_VINT_REASON);
 +	u32 reason_usr = vpu_read_reg(inst->dev, W4_VPU_VINT_REASON_USR);
@@ -947,59 +1003,28 @@ index 000000000..10f225072
 +		vpu_write_reg(inst->dev, W4_VPU_VINT_CLEAR, 0x1);
 +	}
 +
-+	wave4_bit_issue_command(inst->dev, inst, cmd);
-+
-+	/*
-+	 * SET_PARAM is interrupt-driven in Wave4 BSP, but our IRQ handler can
-+	 * consume/clear VINT before this synchronous path polls it.
-+	 *
-+	 * Do not treat a seen VINT reason as completion by itself: unrelated or
-+	 * stale interrupt reasons can be observed while the command is still
-+	 * running. Completion is defined by BUSY deassertion.
-+	 */
-+	if (cmd == W4_ENC_SET_PARAM) {
-+		start = ktime_get();
-+		for (;;) {
-+			u32 busy_now;
-+			u32 int_sts_now = vpu_read_reg(inst->dev, W4_VPU_VPU_INT_STS);
-+			u32 reason_now = vpu_read_reg(inst->dev, W4_VPU_VINT_REASON);
-+			u32 reason_usr_now = vpu_read_reg(inst->dev, W4_VPU_VINT_REASON_USR);
-+
-+			if (reason_usr_now || (int_sts_now && reason_now)) {
-+				u32 clear_reason = reason_now ? reason_now : reason_usr_now;
-+
-+				if (clear_reason)
-+					vpu_write_reg(inst->dev, W4_VPU_VINT_REASON_CLR, clear_reason);
-+				vpu_write_reg(inst->dev, W4_VPU_VINT_CLEAR, 0x1);
-+			}
-+
-+			busy_now = vpu_read_reg(inst->dev, W4_VPU_BUSY_STATUS);
-+			if (!busy_now)
-+				break;
-+
-+			if (ktime_to_us(ktime_sub(ktime_get(), start)) > VPU_BUSY_CHECK_TIMEOUT) {
-+				dev_warn(inst->dev->dev, "%s: command: '%s', timed out\n", __func__,
-+					 cmd_to_str(cmd, inst->type == VPU_INST_TYPE_DEC));
-+				return -ETIMEDOUT;
-+			}
-+
-+			usleep_range(500, 1000);
-+		}
-+
-+		if (queue_status)
-+			*queue_status = vpu_read_reg(inst->dev, W4_RET_QUEUE_STATUS);
-+
-+		if (!check_success)
-+			return 0;
-+
-+		return wave4_vpu_firmware_command_queue_error_check(inst->dev, fail_result);
++	if (cmd == W4_INIT_SEQ || cmd == W4_ENC_SET_PARAM) {
++		command_irq_mask = W4_VPU_INT_SET_PARAM;
++		reinit_completion(&inst->command_done);
++		WRITE_ONCE(inst->command_irq_mask, command_irq_mask);
 +	}
 +
-+	ret = wave4_wait_vpu_busy(inst->dev, W4_VPU_BUSY_STATUS);
-+	if (ret) {
-+		dev_warn(inst->dev->dev, "%s: command: '%s', timed out\n", __func__,
-+			 cmd_to_str(cmd, inst->type == VPU_INST_TYPE_DEC));
-+		return -ETIMEDOUT;
++	wave4_bit_issue_command(inst->dev, inst, cmd);
++
++	if (command_irq_mask) {
++		ret = wave4_wait_command_interrupt(inst);
++		if (ret) {
++			dev_warn(inst->dev->dev, "%s: command: '%s', timed out\n", __func__,
++				 cmd_to_str(cmd, inst->type == VPU_INST_TYPE_DEC));
++			return ret;
++		}
++	} else {
++		ret = wave4_wait_vpu_busy(inst->dev, W4_VPU_BUSY_STATUS);
++		if (ret) {
++			dev_warn(inst->dev->dev, "%s: command: '%s', timed out\n", __func__,
++				 cmd_to_str(cmd, inst->type == VPU_INST_TYPE_DEC));
++			return -ETIMEDOUT;
++		}
 +	}
 +
 +	if (queue_status)
@@ -1078,19 +1103,19 @@ index 000000000..10f225072
 +	 * Wave420L uses shared reason bits for encode/decode PIC/SET_PARAM paths.
 +	 */
 +	if (vpu_dev->attr.support_encoders) {
-+		reg_val |= BIT(1);  /* SET_PARAM/SEQ */
-+		reg_val |= BIT(3);  /* ENC_PIC */
-+		reg_val |= BIT(9);  /* QUERY */
-+		reg_val |= BIT(10); /* SLEEP/WAKE */
-+		reg_val |= BIT(15); /* BSBUF_FULL */
++		reg_val |= W4_VPU_INT_SET_PARAM;
++		reg_val |= W4_VPU_INT_PIC_RUN;
++		reg_val |= W4_VPU_INT_QUERY;
++		reg_val |= W4_VPU_INT_SLEEP_WAKE;
++		reg_val |= W4_VPU_INT_BSBUF;
 +	}
 +
 +	if (vpu_dev->attr.support_decoders) {
-+		reg_val |= BIT(1);  /* INIT_SEQ */
-+		reg_val |= BIT(3);  /* DEC_PIC */
-+		reg_val |= BIT(9);  /* QUERY_DEC */
-+		reg_val |= BIT(10); /* SLEEP/WAKE */
-+		reg_val |= BIT(15); /* BSBUF_EMPTY */
++		reg_val |= W4_VPU_INT_SET_PARAM;
++		reg_val |= W4_VPU_INT_PIC_RUN;
++		reg_val |= W4_VPU_INT_QUERY;
++		reg_val |= W4_VPU_INT_SLEEP_WAKE;
++		reg_val |= W4_VPU_INT_BSBUF;
 +	}
 +
 +	return vpu_write_reg(vpu_dev, W4_VPU_VINT_ENABLE, reg_val);
@@ -2604,9 +2629,12 @@ index 000000000..10f225072
 +		reg_val = (rc_enabled << 0) |
 +			  (p_param->cu_level_rc_enable << 1) |
 +			  (p_param->hvs_qp_enable << 2) |
-+			  (!!p_param->hvs_qp_scale << 3) |
++			  (!!p_param->hvs_qp_enable && !!p_param->hvs_qp_scale) << 3 |
 +			  (p_param->hvs_qp_scale << 4) |
-+			  ((p_param->initial_rc_qp & 0x3f) << 14);
++			  (p_param->bit_alloc_mode << 7) |
++			  (p_param->init_buf_level_x8 << 9) |
++			  ((p_param->initial_rc_qp & 0x3f) << 14) |
++			  (p_open_param->initial_delay << 20);
 +		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_PARAM, reg_val);
 +
 +		vpu_write_reg(inst->dev, W4_CMD_ENC_SEQ_INTRA_PARAM,
@@ -2661,7 +2689,8 @@ index 000000000..10f225072
 +			      (p_param->nr_inter_weight_cr << 25));
 +		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TARGET_RATE,
 +			      p_open_param->bit_rate);
-+		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TRANS_RATE, 0);
++		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TRANS_RATE,
++			      p_param->trans_rate);
 +		vpu_write_reg(inst->dev, W4_CMD_ENC_ROT_PARAM, rot_mir_mode);
 +		vpu_write_reg(inst->dev, W4_CMD_ENC_NUM_UNITS_IN_TICK, 0);
 +		vpu_write_reg(inst->dev, W4_CMD_ENC_TIME_SCALE, 0);
@@ -3156,7 +3185,9 @@ index 000000000..10f225072
 +			      (option->code_option.encode_eob << 7) |
 +			      (option->code_option.encode_vui << 9));
 +
-+	vpu_write_reg(inst->dev, W4_CMD_ENC_PIC_PARAM, 0);
++	vpu_write_reg(inst->dev, W4_CMD_ENC_PIC_PARAM,
++		      (option->force_pic_type_enable << 20) |
++		      (option->force_pic_type << 21));
 +
 +	if (option->src_end_flag)
 +		/* no more source images. */
@@ -3705,10 +3736,10 @@ index 000000000..10f225072
 +}
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-regdefine.h b/drivers/media/platform/chips-media/wave4/wave4-regdefine.h
 new file mode 100644
-index 000000000..4f1af0f6e
+index 000000000..42072d1cc
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-regdefine.h
-@@ -0,0 +1,820 @@
+@@ -0,0 +1,825 @@
 +/* SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause) */
 +/*
 + * Wave4 series multi-standard codec IP - wave4 register definitions
@@ -3780,6 +3811,11 @@ index 000000000..4f1af0f6e
 +#define W4_VPU_VPU_INT_STS             (W4_REG_BASE + 0x0044)
 +#define W4_VPU_VINT_ENABLE             (W4_REG_BASE + 0x0048)
 +#define W4_VPU_VINT_REASON             (W4_REG_BASE + 0x004C)
++#define W4_VPU_INT_SET_PARAM           BIT(1)
++#define W4_VPU_INT_PIC_RUN             BIT(3)
++#define W4_VPU_INT_QUERY               BIT(9)
++#define W4_VPU_INT_SLEEP_WAKE          BIT(10)
++#define W4_VPU_INT_BSBUF               BIT(15)
 +#define W4_VPU_RESET_REQ               (W4_REG_BASE + 0x0050)
 +#define W4_RST_BLOCK_CCLK(_core)       BIT((_core))
 +#define W4_RST_BLOCK_CCLK_ALL          (0xff)
@@ -4808,10 +4844,10 @@ index 000000000..99d667682
 +#endif //#ifndef _VDI_H_
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-dec.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-dec.c
 new file mode 100644
-index 000000000..d9946d4ad
+index 000000000..16ecf7841
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-dec.c
-@@ -0,0 +1,1999 @@
+@@ -0,0 +1,1997 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
 +/*
 + * Wave4 series multi-standard codec IP - decoder interface
@@ -6423,9 +6459,6 @@ index 000000000..d9946d4ad
 +		return ret;
 +	}
 +
-+	if (wave4_vpu_wait_interrupt(inst, VPU_DEC_TIMEOUT) < 0)
-+		dev_dbg(inst->dev->dev, "%s: failed to call vpu_wait_interrupt()\n", __func__);
-+
 +	ret = wave4_vpu_dec_complete_seq_init(inst, &initial_info);
 +	if (ret) {
 +		dev_dbg(inst->dev->dev, "%s: vpu_dec_complete_seq_init, fail: %d, reason: %u\n",
@@ -6720,6 +6753,7 @@ index 000000000..d9946d4ad
 +	inst->xfer_func = V4L2_XFER_FUNC_DEFAULT;
 +
 +	init_completion(&inst->irq_done);
++	init_completion(&inst->command_done);
 +	ret = wave4_kfifo_alloc(inst);
 +	if (ret) {
 +		dev_err(inst->dev->dev, "failed to allocate fifo\n");
@@ -6813,10 +6847,10 @@ index 000000000..d9946d4ad
 +}
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
 new file mode 100644
-index 000000000..6cbec40ab
+index 000000000..4afc5bbdd
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-@@ -0,0 +1,2443 @@
+@@ -0,0 +1,2430 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
 +/*
 + * Wave4 series multi-standard codec IP - encoder interface
@@ -6847,6 +6881,15 @@ index 000000000..6cbec40ab
 +		.max_height = W4_MAX_ENC_PIC_HEIGHT,
 +		.step_height = W4_ENC_RAW_STEP_HEIGHT,
 +	},
++};
++
++static const struct v4l2_frmsize_stepwise enc_packed_frmsize = {
++	.min_width = W4_MIN_ENC_PIC_WIDTH,
++	.max_width = W4_MAX_ENC_PIC_WIDTH,
++	.step_width = W4_ENC_CODEC_STEP_WIDTH,
++	.min_height = W4_MIN_ENC_PIC_HEIGHT,
++	.max_height = W4_MAX_ENC_PIC_HEIGHT,
++	.step_height = W4_ENC_CODEC_STEP_HEIGHT,
 +};
 +
 +static const struct vpu_format enc_fmt_list[FMT_TYPES][MAX_FMTS] = {
@@ -6905,8 +6948,46 @@ index 000000000..6cbec40ab
 +			.v4l2_pix_fmt = V4L2_PIX_FMT_NV61M,
 +			.v4l2_frmsize = &enc_frmsize[VPU_FMT_TYPE_RAW],
 +		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_YUYV,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_UYVY,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_YVYU,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
++		{
++			.v4l2_pix_fmt = V4L2_PIX_FMT_VYUY,
++			.v4l2_frmsize = &enc_packed_frmsize,
++		},
 +	}
 +};
++
++static bool wave4_vpu_enc_is_packed_422(u32 pixelformat)
++{
++	return pixelformat == V4L2_PIX_FMT_YUYV ||
++	       pixelformat == V4L2_PIX_FMT_UYVY ||
++	       pixelformat == V4L2_PIX_FMT_YVYU ||
++	       pixelformat == V4L2_PIX_FMT_VYUY;
++}
++
++static void wave4_vpu_enc_update_raw_fmt(struct v4l2_pix_format_mplane *pix_mp,
++					 unsigned int width, unsigned int height,
++					 const struct v4l2_frmsize_stepwise *frmsize)
++{
++	wave4_update_pix_fmt(pix_mp, VPU_FMT_TYPE_RAW, width, height, frmsize);
++
++	if (!wave4_vpu_enc_is_packed_422(pix_mp->pixelformat))
++		return;
++
++	pix_mp->plane_fmt[0].bytesperline = ALIGN(pix_mp->width, 32) * 2;
++	pix_mp->plane_fmt[0].sizeimage =
++		pix_mp->plane_fmt[0].bytesperline * pix_mp->height;
++}
 +
 +static int switch_state(struct vpu_instance *inst, enum vpu_instance_state state)
 +{
@@ -7084,6 +7165,7 @@ index 000000000..6cbec40ab
 +	u32 luma_size = 0;
 +	u32 chroma_size = 0;
 +	bool src_meta_armed = false;
++	bool force_key_frame = false;
 +
 +	memset(&pic_param, 0, sizeof(struct enc_param));
 +	memset(&frame_buf, 0, sizeof(struct frame_buffer));
@@ -7092,7 +7174,9 @@ index 000000000..6cbec40ab
 +	if (!info)
 +		return -EINVAL;
 +
-+	if (info->mem_planes == 1) {
++	if (wave4_vpu_enc_is_packed_422(inst->src_fmt.pixelformat)) {
++		luma_size = inst->src_fmt.plane_fmt[0].sizeimage;
++	} else if (info->mem_planes == 1) {
 +		luma_size = stride * inst->dst_fmt.height;
 +		chroma_size = luma_size / (info->hdiv * info->vdiv);
 +	} else {
@@ -7123,8 +7207,13 @@ index 000000000..6cbec40ab
 +		if (inst->src_fmt.num_planes == 1) {
 +			frame_buf.buf_y =
 +				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
-+			frame_buf.buf_cb = frame_buf.buf_y + luma_size;
-+			frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
++			if (wave4_vpu_enc_is_packed_422(inst->src_fmt.pixelformat)) {
++				frame_buf.buf_cb = 0;
++				frame_buf.buf_cr = 0;
++			} else {
++				frame_buf.buf_cb = frame_buf.buf_y + luma_size;
++				frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
++			}
 +		} else if (inst->src_fmt.num_planes == 2) {
 +			frame_buf.buf_y =
 +				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
@@ -7183,8 +7272,16 @@ index 000000000..6cbec40ab
 +	pic_param.source_frame = &frame_buf;
 +	pic_param.code_option.implicit_header_encode = 1;
 +	pic_param.code_option.encode_aud = inst->encode_aud;
++	if (!pic_param.src_end_flag)
++		force_key_frame = atomic_xchg(&inst->force_key_frame, 0);
++	if (force_key_frame) {
++		pic_param.force_pic_type_enable = 1;
++		pic_param.force_pic_type = 3;
++	}
 +	ret = wave4_vpu_enc_start_one_frame(inst, &pic_param, fail_res);
 +	if (ret) {
++		if (force_key_frame)
++			atomic_set(&inst->force_key_frame, 1);
 +		if (src_meta_armed &&
 +		    wave4_vpu_enc_src_meta_drop_last(p_enc_info, &dropped_meta) &&
 +		    dropped_meta.idx != src_buf->vb2_buf.index) {
@@ -7221,7 +7318,7 @@ index 000000000..6cbec40ab
 +			__func__);
 +	}
 +
-+	return 0;
++	return ret;
 +}
 +
 +static void wave4_vpu_enc_put_async_pm(struct vpu_instance *inst)
@@ -7392,11 +7489,7 @@ index 000000000..6cbec40ab
 +		if (copied_flags & V4L2_BUF_FLAG_TIMECODE)
 +			dst_buf->timecode = copied_timecode;
 +		if (enc_output_info.pic_type == PIC_TYPE_I) {
-+			if (enc_output_info.enc_vcl_nut == 19 ||
-+			    enc_output_info.enc_vcl_nut == 20)
-+				dst_buf->flags |= V4L2_BUF_FLAG_KEYFRAME;
-+			else
-+				dst_buf->flags |= V4L2_BUF_FLAG_PFRAME;
++			dst_buf->flags |= V4L2_BUF_FLAG_KEYFRAME;
 +		} else if (enc_output_info.pic_type == PIC_TYPE_P) {
 +			dst_buf->flags |= V4L2_BUF_FLAG_PFRAME;
 +		} else if (enc_output_info.pic_type == PIC_TYPE_B) {
@@ -7589,7 +7682,10 @@ index 000000000..6cbec40ab
 +		width = inst->src_fmt.width;
 +		height = inst->src_fmt.height;
 +		f->fmt.pix_mp.pixelformat = inst->src_fmt.pixelformat;
-+		frmsize = &enc_frmsize[VPU_FMT_TYPE_RAW];
++		vpu_fmt = wave4_find_vpu_fmt(f->fmt.pix_mp.pixelformat,
++					     enc_fmt_list[VPU_FMT_TYPE_RAW]);
++		frmsize = vpu_fmt ? vpu_fmt->v4l2_frmsize :
++				     &enc_frmsize[VPU_FMT_TYPE_RAW];
 +	} else {
 +		width = f->fmt.pix_mp.width;
 +		height = f->fmt.pix_mp.height;
@@ -7597,8 +7693,7 @@ index 000000000..6cbec40ab
 +		frmsize = vpu_fmt->v4l2_frmsize;
 +	}
 +
-+	wave4_update_pix_fmt(&f->fmt.pix_mp, VPU_FMT_TYPE_RAW,
-+			     width, height, frmsize);
++	wave4_vpu_enc_update_raw_fmt(&f->fmt.pix_mp, width, height, frmsize);
 +	return 0;
 +}
 +
@@ -7952,9 +8047,11 @@ index 000000000..6cbec40ab
 +		inst->encode_aud = ctrl->val;
 +		break;
 +	case V4L2_CID_HFLIP:
-+		inst->mirror_direction |= (ctrl->val << 1);
++		inst->mirror_direction &= ~BIT(1);
++		inst->mirror_direction |= ctrl->val << 1;
 +		break;
 +	case V4L2_CID_VFLIP:
++		inst->mirror_direction &= ~BIT(0);
 +		inst->mirror_direction |= ctrl->val;
 +		break;
 +	case V4L2_CID_ROTATE:
@@ -7979,7 +8076,9 @@ index 000000000..6cbec40ab
 +		inst->bit_rate = ctrl->val;
 +		break;
 +	case V4L2_CID_MPEG_VIDEO_GOP_SIZE:
-+		inst->enc_param.avc_idr_period = ctrl->val;
++		inst->enc_param.intra_period = ctrl->val;
++		break;
++	case V4L2_CID_MPEG_VIDEO_HEADER_MODE:
 +		break;
 +	case V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE:
 +		inst->enc_param.independ_slice_mode = ctrl->val;
@@ -7996,6 +8095,9 @@ index 000000000..6cbec40ab
 +		inst->enc_param.mb_level_rc_enable = ctrl->val;
 +		inst->enc_param.cu_level_rc_enable = ctrl->val;
 +		inst->enc_param.hvs_qp_enable = ctrl->val;
++		break;
++	case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
++		atomic_set(&inst->force_key_frame, 1);
 +		break;
 +	case V4L2_CID_MPEG_VIDEO_HEVC_PROFILE:
 +		switch (ctrl->val) {
@@ -8019,34 +8121,34 @@ index 000000000..6cbec40ab
 +	case V4L2_CID_MPEG_VIDEO_HEVC_LEVEL:
 +		switch (ctrl->val) {
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_1:
-+			inst->enc_param.level = 10 * 3;
++			inst->enc_param.level = 10;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_2:
-+			inst->enc_param.level = 20 * 3;
++			inst->enc_param.level = 20;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_2_1:
-+			inst->enc_param.level = 21 * 3;
++			inst->enc_param.level = 21;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_3:
-+			inst->enc_param.level = 30 * 3;
++			inst->enc_param.level = 30;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_3_1:
-+			inst->enc_param.level = 31 * 3;
++			inst->enc_param.level = 31;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_4:
-+			inst->enc_param.level = 40 * 3;
++			inst->enc_param.level = 40;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1:
-+			inst->enc_param.level = 41 * 3;
++			inst->enc_param.level = 41;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5:
-+			inst->enc_param.level = 50 * 3;
++			inst->enc_param.level = 50;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_1:
-+			inst->enc_param.level = 51 * 3;
++			inst->enc_param.level = 51;
 +			break;
 +		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_2:
-+			inst->enc_param.level = 52 * 3;
++			inst->enc_param.level = 52;
 +			break;
 +		default:
 +			return -EINVAL;
@@ -8374,18 +8476,29 @@ index 000000000..6cbec40ab
 +{
 +	struct enc_wave_param input = inst->enc_param;
 +	const struct v4l2_format_info *info;
-+	u32 codec_level = input.level;
-+	u32 num_ctu_row = ALIGN(inst->dst_fmt.height, 64) / 64;
-+	u32 num_mb_row = ALIGN(inst->dst_fmt.height, 16) / 16;
 +
 +	info = v4l2_format_info(inst->src_fmt.pixelformat);
 +	if (!info)
 +		return -EINVAL;
 +
-+	if (info->hdiv == 2 && info->vdiv == 1)
++	open_param->packed_format = NOT_PACKED;
++	if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_YUYV) {
 +		open_param->src_format = FORMAT_422;
-+	else
++		open_param->packed_format = PACKED_YUYV;
++	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_UYVY) {
++		open_param->src_format = FORMAT_422;
++		open_param->packed_format = PACKED_UYVY;
++	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_YVYU) {
++		open_param->src_format = FORMAT_422;
++		open_param->packed_format = PACKED_YVYU;
++	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_VYUY) {
++		open_param->src_format = FORMAT_422;
++		open_param->packed_format = PACKED_VYUY;
++	} else if (info->hdiv == 2 && info->vdiv == 1) {
++		open_param->src_format = FORMAT_422;
++	} else {
 +		open_param->src_format = FORMAT_420;
++	}
 +
 +	/*
 +	 * Wave420L firmware on SG2002 is stable with legacy IPP preset.
@@ -8410,30 +8523,27 @@ index 000000000..6cbec40ab
 +	open_param->pic_height = inst->conf_win.height;
 +	open_param->frame_rate_info = inst->frame_rate;
 +	open_param->rc_enable = inst->rc_enable;
++	open_param->bit_rate = inst->bit_rate;
++	open_param->vbv_buffer_size = inst->vbv_buf_size;
 +	if (inst->rc_enable) {
-+		open_param->wave_param.initial_rc_qp = -1;
++		/* Match the Wave420L firmware RC buffer model used by the BSP. */
++		open_param->initial_delay = inst->vbv_buf_size;
++		open_param->wave_param.initial_rc_qp = 63;
++		open_param->wave_param.init_buf_level_x8 = 1;
++		open_param->wave_param.bit_alloc_mode = 1;
++		if (inst->rc_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR)
++			open_param->wave_param.trans_rate = inst->bit_rate;
 +		open_param->wave_param.rc_weight_param = 16;
 +		open_param->wave_param.rc_weight_buf = 128;
 +	}
 +	open_param->wave_param.mb_level_rc_enable = input.mb_level_rc_enable;
 +	open_param->wave_param.cu_level_rc_enable = input.cu_level_rc_enable;
 +	open_param->wave_param.hvs_qp_enable = input.hvs_qp_enable;
-+	open_param->bit_rate = inst->bit_rate;
-+	open_param->vbv_buffer_size = inst->vbv_buf_size;
 +	if (inst->rc_mode == 0)
 +		open_param->vbv_buffer_size = 3000;
 +	open_param->wave_param.profile = input.profile;
 +	open_param->wave_param.en_still_picture = input.en_still_picture;
-+	/*
-+	 * HEVC and H.264 controls share the same internal level field.
-+	 * If userspace doesn't explicitly touch HEVC level after opening,
-+	 * the later H.264 default setup can leave a non-HEVC-coded value here.
-+	 */
-+	if (inst->std == W_HEVC_ENC &&
-+	    (codec_level < 30 || codec_level > 156 || (codec_level % 3)))
-+		codec_level = 30;
-+
-+	open_param->wave_param.level = codec_level;
++	open_param->wave_param.level = input.level;
 +	open_param->wave_param.internal_bit_depth = inst->bit_depth;
 +	open_param->wave_param.intra_qp = input.intra_qp;
 +	open_param->wave_param.min_qp_i = input.min_qp_i;
@@ -8449,14 +8559,6 @@ index 000000000..6cbec40ab
 +	open_param->wave_param.beta_offset_div2 = input.beta_offset_div2;
 +	open_param->wave_param.decoding_refresh_type = input.decoding_refresh_type;
 +	open_param->wave_param.intra_period = input.intra_period;
-+	if (inst->std == W_HEVC_ENC) {
-+		if (input.intra_period == 0) {
-+			open_param->wave_param.decoding_refresh_type = DEC_REFRESH_TYPE_IDR;
-+			open_param->wave_param.intra_period = input.avc_idr_period;
-+		}
-+	} else {
-+		open_param->wave_param.avc_idr_period = input.avc_idr_period;
-+	}
 +	open_param->wave_param.entropy_coding_mode = input.entropy_coding_mode;
 +	open_param->wave_param.lossless_enable = input.lossless_enable;
 +	open_param->wave_param.const_intra_pred_flag = input.const_intra_pred_flag;
@@ -8471,37 +8573,10 @@ index 000000000..6cbec40ab
 +	open_param->wave_param.independ_slice_mode_arg = input.independ_slice_mode_arg;
 +	open_param->wave_param.avc_slice_mode = input.avc_slice_mode;
 +	open_param->wave_param.avc_slice_arg = input.avc_slice_arg;
-+	open_param->wave_param.intra_mb_refresh_mode = input.intra_mb_refresh_mode;
-+	if (input.intra_mb_refresh_mode != REFRESH_MB_MODE_NONE) {
-+		if (num_mb_row >= input.intra_mb_refresh_arg)
-+			open_param->wave_param.intra_mb_refresh_arg =
-+				num_mb_row / input.intra_mb_refresh_arg;
-+		else
-+			open_param->wave_param.intra_mb_refresh_arg = num_mb_row;
-+	}
 +	open_param->wave_param.intra_refresh_mode = input.intra_refresh_mode;
-+	if (input.intra_refresh_mode != 0) {
-+		if (num_ctu_row >= input.intra_refresh_arg)
-+			open_param->wave_param.intra_refresh_arg =
-+				num_ctu_row / input.intra_refresh_arg;
-+		else
-+			open_param->wave_param.intra_refresh_arg = num_ctu_row;
-+	}
++	open_param->wave_param.intra_refresh_arg = input.intra_refresh_arg;
 +	open_param->wave_param.forced_idr_header_enable = input.forced_idr_header_enable;
 +
-+	/*
-+	 * Keep Wave4 defaults close to the BSP path.
-+	 * RC is bitrate-driven there, and several advanced toggles are
-+	 * expected to stay conservative unless explicitly tuned.
-+	 */
-+	open_param->rc_enable = open_param->bit_rate ? 1 : 0;
-+	open_param->wave_param.wpp_enable = 0;
-+	open_param->wave_param.sao_enable = 0;
-+	open_param->wave_param.intra_nx_n_enable = 0;
-+	open_param->wave_param.max_num_merge = 2;
-+	open_param->wave_param.tmvp_enable = 1;
-+	open_param->wave_param.cu_level_rc_enable = open_param->rc_enable;
-+	open_param->wave_param.hvs_qp_enable = open_param->rc_enable;
 +	if (!open_param->rc_enable)
 +		open_param->wave_param.hvs_qp_scale = 0;
 +
@@ -8542,8 +8617,6 @@ index 000000000..6cbec40ab
 +			__func__, ret);
 +		return ret;
 +	}
-+
-+	(void)wave4_vpu_wait_interrupt(inst, VPU_ENC_TIMEOUT);
 +
 +	ret = wave4_vpu_enc_complete_seq_init(inst, &initial_info);
 +	if (ret)
@@ -8898,8 +8971,6 @@ index 000000000..6cbec40ab
 +
 +		ret = start_encode(inst, &fail_res);
 +		if (ret) {
-+			wave4_vpu_enc_put_async_pm(inst);
-+
 +			if (ret == -EINVAL)
 +				dev_err(inst->dev->dev,
 +					"Frame encoding on m2m context (%p), fail: %d (res: %d)\n",
@@ -8916,8 +8987,10 @@ index 000000000..6cbec40ab
 +		break;
 +	}
 +	dev_dbg(inst->dev->dev, "%s: leave and finish job", __func__);
-+	wave4_vpu_enc_put_async_pm(inst);
-+	pm_runtime_put_autosuspend(inst->dev->dev);
++	if (READ_ONCE(p_enc_info->async_pm_ref_held))
++		wave4_vpu_enc_put_async_pm(inst);
++	else
++		pm_runtime_put_autosuspend(inst->dev->dev);
 +	v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
 +}
 +
@@ -9015,7 +9088,7 @@ index 000000000..6cbec40ab
 +	v4l2_ctrl_handler_init(v4l2_ctrl_hdl, 50);
 +	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			       V4L2_CID_MPEG_VIDEO_HEVC_PROFILE,
-+			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN_10, 0,
++			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN, 0,
 +			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN);
 +	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			       V4L2_CID_MPEG_VIDEO_HEVC_LEVEL,
@@ -9023,13 +9096,13 @@ index 000000000..6cbec40ab
 +			       V4L2_MPEG_VIDEO_HEVC_LEVEL_1);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP,
-+			  0, 63, 1, 8);
++			  0, 51, 1, 8);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP,
-+			  0, 63, 1, 51);
++			  0, 51, 1, 51);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP,
-+			  0, 63, 1, 30);
++			  0, 51, 1, 30);
 +	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			       V4L2_CID_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE,
 +			       V4L2_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY, 0,
@@ -9042,7 +9115,9 @@ index 000000000..6cbec40ab
 +			  -6, 6, 1, 0);
 +	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			       V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_TYPE,
-+			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR, 0,
++			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR,
++			       BIT(V4L2_MPEG_VIDEO_HEVC_REFRESH_NONE) |
++			       BIT(V4L2_MPEG_VIDEO_HEVC_REFRESH_CRA),
 +			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_PERIOD,
@@ -9054,61 +9129,9 @@ index 000000000..6cbec40ab
 +			  V4L2_CID_MPEG_VIDEO_HEVC_CONST_INTRA_PRED,
 +			  0, 1, 1, 0);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_HEVC_WAVEFRONT,
-+			  0, 1, 1, 0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_HEVC_STRONG_SMOOTHING,
-+			  0, 1, 1, 1);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_HEVC_MAX_NUM_MERGE_MV_MINUS1,
-+			  1, 2, 1, 2);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_HEVC_TMV_PREDICTION,
 +			  0, 1, 1, 1);
 +
-+	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			       V4L2_CID_MPEG_VIDEO_H264_PROFILE,
-+			       V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_444_PREDICTIVE, 0,
-+			       V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE);
-+	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			       V4L2_CID_MPEG_VIDEO_H264_LEVEL,
-+			       V4L2_MPEG_VIDEO_H264_LEVEL_5_1, 0,
-+			       V4L2_MPEG_VIDEO_H264_LEVEL_1_0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_MIN_QP,
-+			  0, 63, 1, 8);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_MAX_QP,
-+			  0, 63, 1, 51);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_I_FRAME_QP,
-+			  0, 63, 1, 30);
-+	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			       V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_MODE,
-+			       V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY, 0,
-+			       V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_ENABLED);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_ALPHA,
-+			  -6, 6, 1, 0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_BETA,
-+			  -6, 6, 1, 0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_8X8_TRANSFORM,
-+			  0, 1, 1, 1);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_CONSTRAINED_INTRA_PREDICTION,
-+			  0, 1, 1, 0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_CHROMA_QP_INDEX_OFFSET,
-+			  -12, 12, 1, 0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_H264_I_PERIOD,
-+			  0, 2047, 1, 0);
-+	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			       V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE,
-+			       V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CABAC, 0,
-+			       V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_AU_DELIMITER,
 +			  0, 1, 1, 1);
@@ -9119,14 +9142,12 @@ index 000000000..6cbec40ab
 +			  V4L2_CID_VFLIP,
 +			  0, 1, 1, 0);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_ROTATE,
-+			  0, 270, 90, 0);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_VBV_SIZE,
 +			  10, 3000, 1, 1000);
 +	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			       V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
-+			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR, 0,
++			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR,
++			       BIT(V4L2_MPEG_VIDEO_BITRATE_MODE_VBR),
 +			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_BITRATE,
@@ -9135,12 +9156,13 @@ index 000000000..6cbec40ab
 +			  V4L2_CID_MPEG_VIDEO_GOP_SIZE,
 +			  0, 2047, 1, 0);
 +	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			       V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE,
-+			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_MB, 0,
-+			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE);
++			       V4L2_CID_MPEG_VIDEO_HEADER_MODE,
++			       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME,
++			       BIT(V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE),
++			       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB,
-+			  0, 0xFFFF, 1, 0);
++			  V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME,
++			  0, 0, 0, 0);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE,
 +			  0, 1, 1, 0);
@@ -9149,9 +9171,6 @@ index 000000000..6cbec40ab
 +			  0, 1, 1, 0);
 +	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
 +			  V4L2_CID_MIN_BUFFERS_FOR_OUTPUT, 1, 32, 1, 1);
-+	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
-+			  V4L2_CID_MPEG_VIDEO_PREPEND_SPSPPS_TO_IDR,
-+			  0, 1, 1, 0);
 +
 +	if (v4l2_ctrl_hdl->error) {
 +		ret = -ENODEV;
@@ -9159,6 +9178,7 @@ index 000000000..6cbec40ab
 +	}
 +
 +	inst->v4l2_fh.ctrl_handler = v4l2_ctrl_hdl;
++	atomic_set(&inst->force_key_frame, 0);
 +	v4l2_ctrl_handler_setup(v4l2_ctrl_hdl);
 +
 +	wave4_set_default_format(&inst->src_fmt, &inst->dst_fmt);
@@ -9172,6 +9192,7 @@ index 000000000..6cbec40ab
 +	inst->frame_rate = 30;
 +
 +	init_completion(&inst->irq_done);
++	init_completion(&inst->command_done);
 +	ret = wave4_kfifo_alloc(inst);
 +	if (ret) {
 +		dev_err(inst->dev->dev, "failed to allocate fifo\n");
@@ -9262,10 +9283,10 @@ index 000000000..6cbec40ab
 +}
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu.c b/drivers/media/platform/chips-media/wave4/wave4-vpu.c
 new file mode 100644
-index 000000000..28bc4972e
+index 000000000..78cea1ee3
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-vpu.c
-@@ -0,0 +1,716 @@
+@@ -0,0 +1,713 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
 +/*
 + * Wave4 series multi-standard codec IP - platform driver
@@ -9300,9 +9321,6 @@ index 000000000..28bc4972e
 +#define SG2002_VC_SRAM_SHARE_H265	0x2
 +#define SG2002_VC_CTRL_BASE		0x0B030000
 +#define SG2002_VC_CTRL_SIZE		0x100
-+#define W4_INT_SET_PARAM_SEQ		BIT(1)
-+#define W4_INT_PIC_RUN			BIT(3)
-+#define W4_INT_QUERY			BIT(9)
 +#define W4_POLL_INTERVAL_MS		5
 +/*
 + * Wave420L-specific capability map observed on SG2002:
@@ -9317,7 +9335,6 @@ index 000000000..28bc4972e
 +	const char *fw_name;
 +	u32 sram_size;
 +	bool allow_internal_sram;
-+	bool force_polling_backend;
 +	bool use_std_def1_caps;
 +	u32 std_def1_enc_mask;
 +	u32 std_def1_dec_mask;
@@ -9389,16 +9406,20 @@ index 000000000..28bc4972e
 +	 * when one bank holds stale non-PIC bits.
 +	 */
 +	irq_reason = irq_reason_usr | irq_reason_hw;
++	if (irq_reason & W4_VPU_INT_BSBUF)
++		dev_warn_ratelimited(dev->dev,
++				     "encoder bitstream buffer full (reason=%#x)\n",
++				     irq_reason);
 +	if (irq_reason)
 +		wave4_vdi_write_register(dev, W4_VPU_VINT_REASON_CLR, irq_reason);
 +	wave4_vdi_write_register(dev, W4_VPU_VINT_CLEAR, 0x1);
 +
 +	spin_lock_irqsave(&dev->irq_spinlock, flags);
 +	list_for_each_entry_safe(inst, tmp, &dev->instances, list) {
-+		if (irq_reason)
-+			complete(&inst->irq_done);
++		if (irq_reason & READ_ONCE(inst->command_irq_mask))
++			complete(&inst->command_done);
 +
-+		if (irq_reason & W4_INT_PIC_RUN) {
++		if (irq_reason & W4_VPU_INT_PIC_RUN) {
 +			val = BIT(INT_W4_DEC_PIC);
 +			kfifo_in(&inst->irq_status, &val, sizeof(int));
 +			complete(&inst->irq_done);
@@ -9784,8 +9805,6 @@ index 000000000..28bc4972e
 +	INIT_LIST_HEAD(&dev->instances);
 +
 +	dev->irq = platform_get_irq(pdev, 0);
-+	if (match_data->force_polling_backend && dev->irq >= 0)
-+		dev->irq = -1;
 +	if (dev->irq < 0) {
 +		dev_info(&pdev->dev, "using polling IRQ backend\n");
 +		sema_init(&dev->irq_sem, 1);
@@ -9957,7 +9976,6 @@ index 000000000..28bc4972e
 +	.flags = W4_IS_ENC,
 +	.fw_name = "cnm/wave420l_codec_fw.bin",
 +	.allow_internal_sram = true,
-+	.force_polling_backend = true,
 +	.use_std_def1_caps = true,
 +	.std_def1_enc_mask = W4_STD_DEF1_HEVC_ENC,
 +	.std_def1_dec_mask = W4_STD_DEF1_HEVC_DEC,
@@ -11089,10 +11107,10 @@ index 000000000..878df0051
 +}
 diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
 new file mode 100644
-index 000000000..4d06bc695
+index 000000000..5b7b65c48
 --- /dev/null
 +++ b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-@@ -0,0 +1,904 @@
+@@ -0,0 +1,914 @@
 +/* SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause) */
 +/*
 + * Wave4 series multi-standard codec IP - helper definitions
@@ -11103,6 +11121,7 @@ index 000000000..4d06bc695
 +#ifndef VPUAPI_H_INCLUDED
 +#define VPUAPI_H_INCLUDED
 +
++#include <linux/atomic.h>
 +#include <linux/kfifo.h>
 +#include <linux/idr.h>
 +#include <linux/genalloc.h>
@@ -11608,6 +11627,9 @@ index 000000000..4d06bc695
 +	s32 tc_offset_div2: 4; /* sets tc_offset_div3 for deblocking filter */
 +	u32 hvs_qp_scale: 4; /* QP scaling factor for CU QP adjust if hvs_qp_scale_enable is 1 */
 +	u32 hvs_max_delta_qp; /* maximum delta QP for HVS */
++	u32 init_buf_level_x8; /* initial RC buffer fullness in eighths */
++	u32 bit_alloc_mode; /* picture bit allocation mode */
++	u32 trans_rate; /* peak transmission bitrate in bits per second */
 +	s32 chroma_cb_qp_offset; /* the value of chroma(cb) QP offset */
 +	s32 chroma_cr_qp_offset; /* the value of chroma(cr) QP offset */
 +	s32 initial_rc_qp;
@@ -11668,6 +11690,7 @@ index 000000000..4d06bc695
 +	u32 pic_height; /* height of a picture to be encoded in unit of sample */
 +	u32 frame_rate_info;/* desired fps */
 +	u32 vbv_buffer_size;
++	u32 initial_delay; /* initial CPB removal delay in milliseconds */
 +	u32 bit_rate; /* target bitrate in bps */
 +	struct enc_wave_param wave_param;
 +	enum packed_format_num packed_format; /* <<vpuapi_h_packed_format_num>> */
@@ -11705,6 +11728,8 @@ index 000000000..4d06bc695
 +	u32 pic_stream_buffer_addr;
 +	u64 pic_stream_buffer_size;
 +	u32 src_idx; /* source frame buffer index */
++	u32 force_pic_type: 3;
++	u32 force_pic_type_enable: 1;
 +	struct enc_code_opt code_option;
 +	u64 pts; /* presentation timestamp (PTS) of the input source */
 +	bool src_end_flag;
@@ -11894,6 +11919,8 @@ index 000000000..4d06bc695
 +	struct v4l2_ctrl_handler v4l2_ctrl_hdl;
 +	struct vpu_device *dev;
 +	struct completion irq_done;
++	struct completion command_done;
++	u32 command_irq_mask;
 +
 +	struct v4l2_pix_format_mplane src_fmt;
 +	struct v4l2_pix_format_mplane dst_fmt;
@@ -11948,6 +11975,7 @@ index 000000000..4d06bc695
 +	unsigned int rc_enable;
 +	unsigned int bit_rate;
 +	unsigned int encode_aud;
++	atomic_t force_key_frame;
 +	struct enc_wave_param enc_param;
 +};
 +
@@ -12513,874 +12541,6 @@ index 000000000..2eb47a1be
 +int wave4_vpu_enc_check_open_param(struct vpu_instance *inst, struct enc_open_param *open_param);
 +
 +#endif /* __WAVE4_FUNCTION_H__ */
--- 
-2.50.0
-
-
-From dcad5a49f1c2c83eeb9ff0c4ad68a0ab060c6042 Mon Sep 17 00:00:00 2001
-From: sodo <djdisodo@gmail.com>
-Date: Fri, 10 Apr 2026 18:30:10 +0900
-Subject: [PATCH 2/7] riscv: dts: sophgo: add wave420l vpu node to cv180x
-
----
- arch/riscv/boot/dts/sophgo/cv180x.dtsi | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
-
-diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-index 06b0ce5a2..e0c2c0a60 100644
---- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-+++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-@@ -448,6 +448,31 @@ usb: usb@4340000 {
- 			status = "disabled";
- 		};
- 
-+		vpu: video-codec@b020000 {
-+			compatible = "sophgo,cv1800b-wave420l";
-+			reg = <0x0b020000 0x10000>;
-+			interrupts = <SOC_PERIPHERAL_IRQ(22) IRQ_TYPE_LEVEL_HIGH>;
-+			sram-size = <0x19400>;
-+			sophgo,syscon = <&syscon>;
-+			clocks = <&clk CLK_AXI_VIDEO_CODEC>,
-+				 <&clk CLK_H265C>,
-+				 <&clk CLK_APB_H265C>,
-+				 <&clk CLK_VC_SRC0>,
-+				 <&clk CLK_VC_SRC1>,
-+				 <&clk CLK_VC_SRC2>,
-+				 <&clk CLK_CFG_REG_VC>;
-+			clock-names = "clk_axi_video_codec",
-+				      "clk_h265c",
-+				      "clk_apb_h265c",
-+				      "clk_vc_src0",
-+				      "clk_vc_src1",
-+				      "clk_vc_src2",
-+				      "clk_cfg_reg_vc";
-+			resets = <&rst RST_H265C>, <&rst RST_VIPSYS>, <&rst RST_VCSYS>;
-+			reset-names = "h265c", "vipsys", "vcsys";
-+			status = "disabled";
-+		};
-+
- 		rtc@5025000 {
- 			compatible = "sophgo,cv1800b-rtc", "syscon";
- 			reg = <0x5025000 0x2000>;
--- 
-2.50.0
-
-
-From e7f4d6a3f922d2e666464167802d714bd90a1bca Mon Sep 17 00:00:00 2001
-From: Sodo <sodo@example.invalid>
-Date: Sat, 18 Jul 2026 23:58:14 +0900
-Subject: [PATCH 3/7] media: chips-media: support packed 4:2:2 Wave4 input
-
----
- .../platform/chips-media/wave4/wave4-helper.h |  2 +-
- .../chips-media/wave4/wave4-vpu-enc.c         | 86 +++++++++++++++++--
- 2 files changed, 79 insertions(+), 9 deletions(-)
-
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-helper.h b/drivers/media/platform/chips-media/wave4/wave4-helper.h
-index bba13447c..bc14c013a 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-helper.h
-+++ b/drivers/media/platform/chips-media/wave4/wave4-helper.h
-@@ -11,7 +11,7 @@
- #include "wave4-vpu.h"
- 
- #define FMT_TYPES	2
--#define MAX_FMTS	12
-+#define MAX_FMTS	16
- 
- const char *state_to_str(enum vpu_instance_state state);
- void wave4_cleanup_instance(struct vpu_instance *inst, struct file *filp);
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-index 6cbec40ab..91fbca612 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-@@ -30,6 +30,15 @@ static const struct v4l2_frmsize_stepwise enc_frmsize[FMT_TYPES] = {
- 	},
- };
- 
-+static const struct v4l2_frmsize_stepwise enc_packed_frmsize = {
-+	.min_width = W4_MIN_ENC_PIC_WIDTH,
-+	.max_width = W4_MAX_ENC_PIC_WIDTH,
-+	.step_width = W4_ENC_CODEC_STEP_WIDTH,
-+	.min_height = W4_MIN_ENC_PIC_HEIGHT,
-+	.max_height = W4_MAX_ENC_PIC_HEIGHT,
-+	.step_height = W4_ENC_CODEC_STEP_HEIGHT,
-+};
-+
- static const struct vpu_format enc_fmt_list[FMT_TYPES][MAX_FMTS] = {
- 	[VPU_FMT_TYPE_CODEC] = {
- 		{
-@@ -86,9 +95,47 @@ static const struct vpu_format enc_fmt_list[FMT_TYPES][MAX_FMTS] = {
- 			.v4l2_pix_fmt = V4L2_PIX_FMT_NV61M,
- 			.v4l2_frmsize = &enc_frmsize[VPU_FMT_TYPE_RAW],
- 		},
-+		{
-+			.v4l2_pix_fmt = V4L2_PIX_FMT_YUYV,
-+			.v4l2_frmsize = &enc_packed_frmsize,
-+		},
-+		{
-+			.v4l2_pix_fmt = V4L2_PIX_FMT_UYVY,
-+			.v4l2_frmsize = &enc_packed_frmsize,
-+		},
-+		{
-+			.v4l2_pix_fmt = V4L2_PIX_FMT_YVYU,
-+			.v4l2_frmsize = &enc_packed_frmsize,
-+		},
-+		{
-+			.v4l2_pix_fmt = V4L2_PIX_FMT_VYUY,
-+			.v4l2_frmsize = &enc_packed_frmsize,
-+		},
- 	}
- };
- 
-+static bool wave4_vpu_enc_is_packed_422(u32 pixelformat)
-+{
-+	return pixelformat == V4L2_PIX_FMT_YUYV ||
-+	       pixelformat == V4L2_PIX_FMT_UYVY ||
-+	       pixelformat == V4L2_PIX_FMT_YVYU ||
-+	       pixelformat == V4L2_PIX_FMT_VYUY;
-+}
-+
-+static void wave4_vpu_enc_update_raw_fmt(struct v4l2_pix_format_mplane *pix_mp,
-+					 unsigned int width, unsigned int height,
-+					 const struct v4l2_frmsize_stepwise *frmsize)
-+{
-+	wave4_update_pix_fmt(pix_mp, VPU_FMT_TYPE_RAW, width, height, frmsize);
-+
-+	if (!wave4_vpu_enc_is_packed_422(pix_mp->pixelformat))
-+		return;
-+
-+	pix_mp->plane_fmt[0].bytesperline = ALIGN(pix_mp->width, 32) * 2;
-+	pix_mp->plane_fmt[0].sizeimage =
-+		pix_mp->plane_fmt[0].bytesperline * pix_mp->height;
-+}
-+
- static int switch_state(struct vpu_instance *inst, enum vpu_instance_state state)
- {
- 	switch (state) {
-@@ -273,7 +320,9 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
- 	if (!info)
- 		return -EINVAL;
- 
--	if (info->mem_planes == 1) {
-+	if (wave4_vpu_enc_is_packed_422(inst->src_fmt.pixelformat)) {
-+		luma_size = inst->src_fmt.plane_fmt[0].sizeimage;
-+	} else if (info->mem_planes == 1) {
- 		luma_size = stride * inst->dst_fmt.height;
- 		chroma_size = luma_size / (info->hdiv * info->vdiv);
- 	} else {
-@@ -304,8 +353,13 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
- 		if (inst->src_fmt.num_planes == 1) {
- 			frame_buf.buf_y =
- 				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
--			frame_buf.buf_cb = frame_buf.buf_y + luma_size;
--			frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
-+			if (wave4_vpu_enc_is_packed_422(inst->src_fmt.pixelformat)) {
-+				frame_buf.buf_cb = 0;
-+				frame_buf.buf_cr = 0;
-+			} else {
-+				frame_buf.buf_cb = frame_buf.buf_y + luma_size;
-+				frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
-+			}
- 		} else if (inst->src_fmt.num_planes == 2) {
- 			frame_buf.buf_y =
- 				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
-@@ -770,7 +824,10 @@ static int wave4_vpu_enc_try_fmt_out(struct file *file, void *fh, struct v4l2_fo
- 		width = inst->src_fmt.width;
- 		height = inst->src_fmt.height;
- 		f->fmt.pix_mp.pixelformat = inst->src_fmt.pixelformat;
--		frmsize = &enc_frmsize[VPU_FMT_TYPE_RAW];
-+		vpu_fmt = wave4_find_vpu_fmt(f->fmt.pix_mp.pixelformat,
-+					     enc_fmt_list[VPU_FMT_TYPE_RAW]);
-+		frmsize = vpu_fmt ? vpu_fmt->v4l2_frmsize :
-+				     &enc_frmsize[VPU_FMT_TYPE_RAW];
- 	} else {
- 		width = f->fmt.pix_mp.width;
- 		height = f->fmt.pix_mp.height;
-@@ -778,8 +835,7 @@ static int wave4_vpu_enc_try_fmt_out(struct file *file, void *fh, struct v4l2_fo
- 		frmsize = vpu_fmt->v4l2_frmsize;
- 	}
- 
--	wave4_update_pix_fmt(&f->fmt.pix_mp, VPU_FMT_TYPE_RAW,
--			     width, height, frmsize);
-+	wave4_vpu_enc_update_raw_fmt(&f->fmt.pix_mp, width, height, frmsize);
- 	return 0;
- }
- 
-@@ -1563,10 +1619,24 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
- 	if (!info)
- 		return -EINVAL;
- 
--	if (info->hdiv == 2 && info->vdiv == 1)
-+	open_param->packed_format = NOT_PACKED;
-+	if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_YUYV) {
- 		open_param->src_format = FORMAT_422;
--	else
-+		open_param->packed_format = PACKED_YUYV;
-+	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_UYVY) {
-+		open_param->src_format = FORMAT_422;
-+		open_param->packed_format = PACKED_UYVY;
-+	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_YVYU) {
-+		open_param->src_format = FORMAT_422;
-+		open_param->packed_format = PACKED_YVYU;
-+	} else if (inst->src_fmt.pixelformat == V4L2_PIX_FMT_VYUY) {
-+		open_param->src_format = FORMAT_422;
-+		open_param->packed_format = PACKED_VYUY;
-+	} else if (info->hdiv == 2 && info->vdiv == 1) {
-+		open_param->src_format = FORMAT_422;
-+	} else {
- 		open_param->src_format = FORMAT_420;
-+	}
- 
- 	/*
- 	 * Wave420L firmware on SG2002 is stable with legacy IPP preset.
--- 
-2.50.0
-
-
-From e226e6adaacf3c67181939efea9364f8cff269df Mon Sep 17 00:00:00 2001
-From: Sodo <sodo@example.invalid>
-Date: Sun, 19 Jul 2026 08:23:16 +0900
-Subject: [PATCH 4/7] media: wave4: do not claim camera subsystem reset
-
----
- .../devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml    | 4 ++--
- arch/riscv/boot/dts/sophgo/cv180x.dtsi                        | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml b/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
-index 27e5d89ac..8f0582486 100644
---- a/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
-+++ b/Documentation/devicetree/bindings/media/sophgo,cv1800b-wave420l.yaml
-@@ -80,7 +80,7 @@ examples:
-                       "clk_vc_src1",
-                       "clk_vc_src2",
-                       "clk_cfg_reg_vc";
--        resets = <&rst 5>, <&rst 6>, <&rst 95>;
--        reset-names = "h265c", "vipsys", "vcsys";
-+        resets = <&rst 5>, <&rst 95>;
-+        reset-names = "h265c", "vcsys";
-         sram-size = <0x19400>;
-     };
-diff --git a/arch/riscv/boot/dts/sophgo/cv180x.dtsi b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-index e0c2c0a60..ef4807e56 100644
---- a/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-+++ b/arch/riscv/boot/dts/sophgo/cv180x.dtsi
-@@ -468,8 +468,8 @@ vpu: video-codec@b020000 {
- 				      "clk_vc_src1",
- 				      "clk_vc_src2",
- 				      "clk_cfg_reg_vc";
--			resets = <&rst RST_H265C>, <&rst RST_VIPSYS>, <&rst RST_VCSYS>;
--			reset-names = "h265c", "vipsys", "vcsys";
-+			resets = <&rst RST_H265C>, <&rst RST_VCSYS>;
-+			reset-names = "h265c", "vcsys";
- 			status = "disabled";
- 		};
- 
--- 
-2.50.0
-
-
-From 92d9b833f700153bec57fddc2b26b47c66a8c419 Mon Sep 17 00:00:00 2001
-From: Sodo <sodo@example.invalid>
-Date: Sun, 19 Jul 2026 13:20:49 +0900
-Subject: [PATCH 5/7] media: wave4: report I-frames as keyframes
-
----
- drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
-
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-index 91fbca612..ea3a9a254 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-@@ -627,11 +627,7 @@ static void wave4_vpu_enc_finish_encode(struct vpu_instance *inst)
- 		if (copied_flags & V4L2_BUF_FLAG_TIMECODE)
- 			dst_buf->timecode = copied_timecode;
- 		if (enc_output_info.pic_type == PIC_TYPE_I) {
--			if (enc_output_info.enc_vcl_nut == 19 ||
--			    enc_output_info.enc_vcl_nut == 20)
--				dst_buf->flags |= V4L2_BUF_FLAG_KEYFRAME;
--			else
--				dst_buf->flags |= V4L2_BUF_FLAG_PFRAME;
-+			dst_buf->flags |= V4L2_BUF_FLAG_KEYFRAME;
- 		} else if (enc_output_info.pic_type == PIC_TYPE_P) {
- 			dst_buf->flags |= V4L2_BUF_FLAG_PFRAME;
- 		} else if (enc_output_info.pic_type == PIC_TYPE_B) {
--- 
-2.50.0
-
-
-From f837eb45e6213cf516aa5aa5bad88ad7bffe4021 Mon Sep 17 00:00:00 2001
-From: Sodo <sodo@example.invalid>
-Date: Sun, 19 Jul 2026 14:24:20 +0900
-Subject: [PATCH 6/7] media: wave4: expose only validated encoder controls
-
----
- .../platform/chips-media/wave4/wave4-hw.c     |   4 +-
- .../chips-media/wave4/wave4-vpu-enc.c         | 176 +++++-------------
- .../platform/chips-media/wave4/wave4-vpuapi.h |   4 +
- 3 files changed, 53 insertions(+), 131 deletions(-)
-
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-hw.c b/drivers/media/platform/chips-media/wave4/wave4-hw.c
-index 10f225072..5e52992fc 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-hw.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-hw.c
-@@ -2648,7 +2648,9 @@ int wave4_vpu_encode(struct vpu_instance *inst, struct enc_param *option, u32 *f
- 			      (option->code_option.encode_eob << 7) |
- 			      (option->code_option.encode_vui << 9));
- 
--	vpu_write_reg(inst->dev, W4_CMD_ENC_PIC_PARAM, 0);
-+	vpu_write_reg(inst->dev, W4_CMD_ENC_PIC_PARAM,
-+		      (option->force_pic_type_enable << 20) |
-+		      (option->force_pic_type << 21));
- 
- 	if (option->src_end_flag)
- 		/* no more source images. */
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-index ea3a9a254..310d7d1f9 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-@@ -312,6 +312,7 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
- 	u32 luma_size = 0;
- 	u32 chroma_size = 0;
- 	bool src_meta_armed = false;
-+	bool force_key_frame = false;
- 
- 	memset(&pic_param, 0, sizeof(struct enc_param));
- 	memset(&frame_buf, 0, sizeof(struct frame_buffer));
-@@ -418,8 +419,16 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
- 	pic_param.source_frame = &frame_buf;
- 	pic_param.code_option.implicit_header_encode = 1;
- 	pic_param.code_option.encode_aud = inst->encode_aud;
-+	if (!pic_param.src_end_flag)
-+		force_key_frame = atomic_xchg(&inst->force_key_frame, 0);
-+	if (force_key_frame) {
-+		pic_param.force_pic_type_enable = 1;
-+		pic_param.force_pic_type = 3;
-+	}
- 	ret = wave4_vpu_enc_start_one_frame(inst, &pic_param, fail_res);
- 	if (ret) {
-+		if (force_key_frame)
-+			atomic_set(&inst->force_key_frame, 1);
- 		if (src_meta_armed &&
- 		    wave4_vpu_enc_src_meta_drop_last(p_enc_info, &dropped_meta) &&
- 		    dropped_meta.idx != src_buf->vb2_buf.index) {
-@@ -1185,9 +1194,11 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
- 		inst->encode_aud = ctrl->val;
- 		break;
- 	case V4L2_CID_HFLIP:
--		inst->mirror_direction |= (ctrl->val << 1);
-+		inst->mirror_direction &= ~BIT(1);
-+		inst->mirror_direction |= ctrl->val << 1;
- 		break;
- 	case V4L2_CID_VFLIP:
-+		inst->mirror_direction &= ~BIT(0);
- 		inst->mirror_direction |= ctrl->val;
- 		break;
- 	case V4L2_CID_ROTATE:
-@@ -1212,7 +1223,9 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
- 		inst->bit_rate = ctrl->val;
- 		break;
- 	case V4L2_CID_MPEG_VIDEO_GOP_SIZE:
--		inst->enc_param.avc_idr_period = ctrl->val;
-+		inst->enc_param.intra_period = ctrl->val;
-+		break;
-+	case V4L2_CID_MPEG_VIDEO_HEADER_MODE:
- 		break;
- 	case V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE:
- 		inst->enc_param.independ_slice_mode = ctrl->val;
-@@ -1230,6 +1243,9 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
- 		inst->enc_param.cu_level_rc_enable = ctrl->val;
- 		inst->enc_param.hvs_qp_enable = ctrl->val;
- 		break;
-+	case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
-+		atomic_set(&inst->force_key_frame, 1);
-+		break;
- 	case V4L2_CID_MPEG_VIDEO_HEVC_PROFILE:
- 		switch (ctrl->val) {
- 		case V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN:
-@@ -1252,34 +1268,34 @@ static int wave4_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
- 	case V4L2_CID_MPEG_VIDEO_HEVC_LEVEL:
- 		switch (ctrl->val) {
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_1:
--			inst->enc_param.level = 10 * 3;
-+			inst->enc_param.level = 10;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_2:
--			inst->enc_param.level = 20 * 3;
-+			inst->enc_param.level = 20;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_2_1:
--			inst->enc_param.level = 21 * 3;
-+			inst->enc_param.level = 21;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_3:
--			inst->enc_param.level = 30 * 3;
-+			inst->enc_param.level = 30;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_3_1:
--			inst->enc_param.level = 31 * 3;
-+			inst->enc_param.level = 31;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_4:
--			inst->enc_param.level = 40 * 3;
-+			inst->enc_param.level = 40;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1:
--			inst->enc_param.level = 41 * 3;
-+			inst->enc_param.level = 41;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5:
--			inst->enc_param.level = 50 * 3;
-+			inst->enc_param.level = 50;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_1:
--			inst->enc_param.level = 51 * 3;
-+			inst->enc_param.level = 51;
- 			break;
- 		case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_2:
--			inst->enc_param.level = 52 * 3;
-+			inst->enc_param.level = 52;
- 			break;
- 		default:
- 			return -EINVAL;
-@@ -1607,9 +1623,6 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
- {
- 	struct enc_wave_param input = inst->enc_param;
- 	const struct v4l2_format_info *info;
--	u32 codec_level = input.level;
--	u32 num_ctu_row = ALIGN(inst->dst_fmt.height, 64) / 64;
--	u32 num_mb_row = ALIGN(inst->dst_fmt.height, 16) / 16;
- 
- 	info = v4l2_format_info(inst->src_fmt.pixelformat);
- 	if (!info)
-@@ -1671,16 +1684,7 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
- 		open_param->vbv_buffer_size = 3000;
- 	open_param->wave_param.profile = input.profile;
- 	open_param->wave_param.en_still_picture = input.en_still_picture;
--	/*
--	 * HEVC and H.264 controls share the same internal level field.
--	 * If userspace doesn't explicitly touch HEVC level after opening,
--	 * the later H.264 default setup can leave a non-HEVC-coded value here.
--	 */
--	if (inst->std == W_HEVC_ENC &&
--	    (codec_level < 30 || codec_level > 156 || (codec_level % 3)))
--		codec_level = 30;
--
--	open_param->wave_param.level = codec_level;
-+	open_param->wave_param.level = input.level;
- 	open_param->wave_param.internal_bit_depth = inst->bit_depth;
- 	open_param->wave_param.intra_qp = input.intra_qp;
- 	open_param->wave_param.min_qp_i = input.min_qp_i;
-@@ -1696,14 +1700,6 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
- 	open_param->wave_param.beta_offset_div2 = input.beta_offset_div2;
- 	open_param->wave_param.decoding_refresh_type = input.decoding_refresh_type;
- 	open_param->wave_param.intra_period = input.intra_period;
--	if (inst->std == W_HEVC_ENC) {
--		if (input.intra_period == 0) {
--			open_param->wave_param.decoding_refresh_type = DEC_REFRESH_TYPE_IDR;
--			open_param->wave_param.intra_period = input.avc_idr_period;
--		}
--	} else {
--		open_param->wave_param.avc_idr_period = input.avc_idr_period;
--	}
- 	open_param->wave_param.entropy_coding_mode = input.entropy_coding_mode;
- 	open_param->wave_param.lossless_enable = input.lossless_enable;
- 	open_param->wave_param.const_intra_pred_flag = input.const_intra_pred_flag;
-@@ -1718,37 +1714,10 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
- 	open_param->wave_param.independ_slice_mode_arg = input.independ_slice_mode_arg;
- 	open_param->wave_param.avc_slice_mode = input.avc_slice_mode;
- 	open_param->wave_param.avc_slice_arg = input.avc_slice_arg;
--	open_param->wave_param.intra_mb_refresh_mode = input.intra_mb_refresh_mode;
--	if (input.intra_mb_refresh_mode != REFRESH_MB_MODE_NONE) {
--		if (num_mb_row >= input.intra_mb_refresh_arg)
--			open_param->wave_param.intra_mb_refresh_arg =
--				num_mb_row / input.intra_mb_refresh_arg;
--		else
--			open_param->wave_param.intra_mb_refresh_arg = num_mb_row;
--	}
- 	open_param->wave_param.intra_refresh_mode = input.intra_refresh_mode;
--	if (input.intra_refresh_mode != 0) {
--		if (num_ctu_row >= input.intra_refresh_arg)
--			open_param->wave_param.intra_refresh_arg =
--				num_ctu_row / input.intra_refresh_arg;
--		else
--			open_param->wave_param.intra_refresh_arg = num_ctu_row;
--	}
-+	open_param->wave_param.intra_refresh_arg = input.intra_refresh_arg;
- 	open_param->wave_param.forced_idr_header_enable = input.forced_idr_header_enable;
- 
--	/*
--	 * Keep Wave4 defaults close to the BSP path.
--	 * RC is bitrate-driven there, and several advanced toggles are
--	 * expected to stay conservative unless explicitly tuned.
--	 */
--	open_param->rc_enable = open_param->bit_rate ? 1 : 0;
--	open_param->wave_param.wpp_enable = 0;
--	open_param->wave_param.sao_enable = 0;
--	open_param->wave_param.intra_nx_n_enable = 0;
--	open_param->wave_param.max_num_merge = 2;
--	open_param->wave_param.tmvp_enable = 1;
--	open_param->wave_param.cu_level_rc_enable = open_param->rc_enable;
--	open_param->wave_param.hvs_qp_enable = open_param->rc_enable;
- 	if (!open_param->rc_enable)
- 		open_param->wave_param.hvs_qp_scale = 0;
- 
-@@ -2262,7 +2231,7 @@ static int wave4_vpu_open_enc(struct file *filp)
- 	v4l2_ctrl_handler_init(v4l2_ctrl_hdl, 50);
- 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			       V4L2_CID_MPEG_VIDEO_HEVC_PROFILE,
--			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN_10, 0,
-+			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN, 0,
- 			       V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN);
- 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			       V4L2_CID_MPEG_VIDEO_HEVC_LEVEL,
-@@ -2270,13 +2239,13 @@ static int wave4_vpu_open_enc(struct file *filp)
- 			       V4L2_MPEG_VIDEO_HEVC_LEVEL_1);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP,
--			  0, 63, 1, 8);
-+			  0, 51, 1, 8);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP,
--			  0, 63, 1, 51);
-+			  0, 51, 1, 51);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP,
--			  0, 63, 1, 30);
-+			  0, 51, 1, 30);
- 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			       V4L2_CID_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE,
- 			       V4L2_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY, 0,
-@@ -2289,7 +2258,9 @@ static int wave4_vpu_open_enc(struct file *filp)
- 			  -6, 6, 1, 0);
- 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			       V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_TYPE,
--			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR, 0,
-+			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR,
-+			       BIT(V4L2_MPEG_VIDEO_HEVC_REFRESH_NONE) |
-+			       BIT(V4L2_MPEG_VIDEO_HEVC_REFRESH_CRA),
- 			       V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_PERIOD,
-@@ -2300,62 +2271,10 @@ static int wave4_vpu_open_enc(struct file *filp)
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_HEVC_CONST_INTRA_PRED,
- 			  0, 1, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_HEVC_WAVEFRONT,
--			  0, 1, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_HEVC_STRONG_SMOOTHING,
--			  0, 1, 1, 1);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_HEVC_MAX_NUM_MERGE_MV_MINUS1,
--			  1, 2, 1, 2);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_HEVC_TMV_PREDICTION,
- 			  0, 1, 1, 1);
- 
--	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			       V4L2_CID_MPEG_VIDEO_H264_PROFILE,
--			       V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_444_PREDICTIVE, 0,
--			       V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE);
--	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			       V4L2_CID_MPEG_VIDEO_H264_LEVEL,
--			       V4L2_MPEG_VIDEO_H264_LEVEL_5_1, 0,
--			       V4L2_MPEG_VIDEO_H264_LEVEL_1_0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_MIN_QP,
--			  0, 63, 1, 8);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_MAX_QP,
--			  0, 63, 1, 51);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_I_FRAME_QP,
--			  0, 63, 1, 30);
--	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			       V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_MODE,
--			       V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY, 0,
--			       V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_ENABLED);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_ALPHA,
--			  -6, 6, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_BETA,
--			  -6, 6, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_8X8_TRANSFORM,
--			  0, 1, 1, 1);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_CONSTRAINED_INTRA_PREDICTION,
--			  0, 1, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_CHROMA_QP_INDEX_OFFSET,
--			  -12, 12, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_H264_I_PERIOD,
--			  0, 2047, 1, 0);
--	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			       V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE,
--			       V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CABAC, 0,
--			       V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_AU_DELIMITER,
- 			  0, 1, 1, 1);
-@@ -2365,15 +2284,13 @@ static int wave4_vpu_open_enc(struct file *filp)
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_VFLIP,
- 			  0, 1, 1, 0);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_ROTATE,
--			  0, 270, 90, 0);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_VBV_SIZE,
- 			  10, 3000, 1, 1000);
- 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			       V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
--			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR, 0,
-+			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR,
-+			       BIT(V4L2_MPEG_VIDEO_BITRATE_MODE_VBR),
- 			       V4L2_MPEG_VIDEO_BITRATE_MODE_CBR);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_BITRATE,
-@@ -2382,12 +2299,13 @@ static int wave4_vpu_open_enc(struct file *filp)
- 			  V4L2_CID_MPEG_VIDEO_GOP_SIZE,
- 			  0, 2047, 1, 0);
- 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			       V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE,
--			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_MB, 0,
--			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE);
-+			       V4L2_CID_MPEG_VIDEO_HEADER_MODE,
-+			       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME,
-+			       BIT(V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE),
-+			       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB,
--			  0, 0xFFFF, 1, 0);
-+			  V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME,
-+			  0, 0, 0, 0);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE,
- 			  0, 1, 1, 0);
-@@ -2396,9 +2314,6 @@ static int wave4_vpu_open_enc(struct file *filp)
- 			  0, 1, 1, 0);
- 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
- 			  V4L2_CID_MIN_BUFFERS_FOR_OUTPUT, 1, 32, 1, 1);
--	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave4_vpu_enc_ctrl_ops,
--			  V4L2_CID_MPEG_VIDEO_PREPEND_SPSPPS_TO_IDR,
--			  0, 1, 1, 0);
- 
- 	if (v4l2_ctrl_hdl->error) {
- 		ret = -ENODEV;
-@@ -2406,6 +2321,7 @@ static int wave4_vpu_open_enc(struct file *filp)
- 	}
- 
- 	inst->v4l2_fh.ctrl_handler = v4l2_ctrl_hdl;
-+	atomic_set(&inst->force_key_frame, 0);
- 	v4l2_ctrl_handler_setup(v4l2_ctrl_hdl);
- 
- 	wave4_set_default_format(&inst->src_fmt, &inst->dst_fmt);
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-index 4d06bc695..5fa310870 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-@@ -8,6 +8,7 @@
- #ifndef VPUAPI_H_INCLUDED
- #define VPUAPI_H_INCLUDED
- 
-+#include <linux/atomic.h>
- #include <linux/kfifo.h>
- #include <linux/idr.h>
- #include <linux/genalloc.h>
-@@ -610,6 +611,8 @@ struct enc_param {
- 	u32 pic_stream_buffer_addr;
- 	u64 pic_stream_buffer_size;
- 	u32 src_idx; /* source frame buffer index */
-+	u32 force_pic_type: 3;
-+	u32 force_pic_type_enable: 1;
- 	struct enc_code_opt code_option;
- 	u64 pts; /* presentation timestamp (PTS) of the input source */
- 	bool src_end_flag;
-@@ -853,6 +856,7 @@ struct vpu_instance {
- 	unsigned int rc_enable;
- 	unsigned int bit_rate;
- 	unsigned int encode_aud;
-+	atomic_t force_key_frame;
- 	struct enc_wave_param enc_param;
- };
- 
--- 
-2.50.0
-
-
-From 2672d281a8eb954a1b94563c41b4f825a6e7c515 Mon Sep 17 00:00:00 2001
-From: sodo <djdisodo@gmail.com>
-Date: Mon, 20 Jul 2026 10:49:28 +0900
-Subject: [PATCH 7/7] media: chips-media: stabilize Wave420L CBR encoding
-
----
- .../platform/chips-media/wave4/wave4-helper.c |  6 ++++-
- .../platform/chips-media/wave4/wave4-hw.c     | 10 ++++++---
- .../chips-media/wave4/wave4-vpu-enc.c         | 22 ++++++++++++-------
- .../platform/chips-media/wave4/wave4-vpu.c    |  5 +++++
- .../platform/chips-media/wave4/wave4-vpuapi.h |  4 ++++
- 5 files changed, 35 insertions(+), 12 deletions(-)
-
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-helper.c b/drivers/media/platform/chips-media/wave4/wave4-helper.c
-index 9164a0265..39c7cdc4d 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-helper.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-helper.c
-@@ -5,9 +5,13 @@
-  * Copyright (C) 2021-2023 CHIPS&MEDIA INC
-  */
- 
-+#include <linux/sizes.h>
-+
- #include "wave4-helper.h"
- 
--#define DEFAULT_BS_SIZE(width, height) ((width) * (height) / 8 * 3)
-+#define WAVE4_MIN_BS_SIZE	SZ_4M
-+#define DEFAULT_BS_SIZE(width, height) \
-+	max_t(size_t, (width) * (height) / 8 * 3, WAVE4_MIN_BS_SIZE)
- 
- const char *state_to_str(enum vpu_instance_state state)
- {
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-hw.c b/drivers/media/platform/chips-media/wave4/wave4-hw.c
-index 5e52992fc..09477eec9 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-hw.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-hw.c
-@@ -2096,9 +2096,12 @@ int wave4_vpu_enc_init_seq(struct vpu_instance *inst)
- 		reg_val = (rc_enabled << 0) |
- 			  (p_param->cu_level_rc_enable << 1) |
- 			  (p_param->hvs_qp_enable << 2) |
--			  (!!p_param->hvs_qp_scale << 3) |
-+			  (!!p_param->hvs_qp_enable && !!p_param->hvs_qp_scale) << 3 |
- 			  (p_param->hvs_qp_scale << 4) |
--			  ((p_param->initial_rc_qp & 0x3f) << 14);
-+			  (p_param->bit_alloc_mode << 7) |
-+			  (p_param->init_buf_level_x8 << 9) |
-+			  ((p_param->initial_rc_qp & 0x3f) << 14) |
-+			  (p_open_param->initial_delay << 20);
- 		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_PARAM, reg_val);
- 
- 		vpu_write_reg(inst->dev, W4_CMD_ENC_SEQ_INTRA_PARAM,
-@@ -2153,7 +2156,8 @@ int wave4_vpu_enc_init_seq(struct vpu_instance *inst)
- 			      (p_param->nr_inter_weight_cr << 25));
- 		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TARGET_RATE,
- 			      p_open_param->bit_rate);
--		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TRANS_RATE, 0);
-+		vpu_write_reg(inst->dev, W4_CMD_ENC_RC_TRANS_RATE,
-+			      p_param->trans_rate);
- 		vpu_write_reg(inst->dev, W4_CMD_ENC_ROT_PARAM, rot_mir_mode);
- 		vpu_write_reg(inst->dev, W4_CMD_ENC_NUM_UNITS_IN_TICK, 0);
- 		vpu_write_reg(inst->dev, W4_CMD_ENC_TIME_SCALE, 0);
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-index 310d7d1f9..e99371f7c 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpu-enc.c
-@@ -465,7 +465,7 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
- 			__func__);
- 	}
- 
--	return 0;
-+	return ret;
- }
- 
- static void wave4_vpu_enc_put_async_pm(struct vpu_instance *inst)
-@@ -1670,16 +1670,22 @@ static int wave4_set_enc_openparam(struct enc_open_param *open_param,
- 	open_param->pic_height = inst->conf_win.height;
- 	open_param->frame_rate_info = inst->frame_rate;
- 	open_param->rc_enable = inst->rc_enable;
-+	open_param->bit_rate = inst->bit_rate;
-+	open_param->vbv_buffer_size = inst->vbv_buf_size;
- 	if (inst->rc_enable) {
--		open_param->wave_param.initial_rc_qp = -1;
-+		/* Match the Wave420L firmware RC buffer model used by the BSP. */
-+		open_param->initial_delay = inst->vbv_buf_size;
-+		open_param->wave_param.initial_rc_qp = 63;
-+		open_param->wave_param.init_buf_level_x8 = 1;
-+		open_param->wave_param.bit_alloc_mode = 1;
-+		if (inst->rc_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR)
-+			open_param->wave_param.trans_rate = inst->bit_rate;
- 		open_param->wave_param.rc_weight_param = 16;
- 		open_param->wave_param.rc_weight_buf = 128;
- 	}
- 	open_param->wave_param.mb_level_rc_enable = input.mb_level_rc_enable;
- 	open_param->wave_param.cu_level_rc_enable = input.cu_level_rc_enable;
- 	open_param->wave_param.hvs_qp_enable = input.hvs_qp_enable;
--	open_param->bit_rate = inst->bit_rate;
--	open_param->vbv_buffer_size = inst->vbv_buf_size;
- 	if (inst->rc_mode == 0)
- 		open_param->vbv_buffer_size = 3000;
- 	open_param->wave_param.profile = input.profile;
-@@ -2114,8 +2120,6 @@ static void wave4_vpu_enc_device_run(void *priv)
- 
- 		ret = start_encode(inst, &fail_res);
- 		if (ret) {
--			wave4_vpu_enc_put_async_pm(inst);
--
- 			if (ret == -EINVAL)
- 				dev_err(inst->dev->dev,
- 					"Frame encoding on m2m context (%p), fail: %d (res: %d)\n",
-@@ -2132,8 +2136,10 @@ static void wave4_vpu_enc_device_run(void *priv)
- 		break;
- 	}
- 	dev_dbg(inst->dev->dev, "%s: leave and finish job", __func__);
--	wave4_vpu_enc_put_async_pm(inst);
--	pm_runtime_put_autosuspend(inst->dev->dev);
-+	if (READ_ONCE(p_enc_info->async_pm_ref_held))
-+		wave4_vpu_enc_put_async_pm(inst);
-+	else
-+		pm_runtime_put_autosuspend(inst->dev->dev);
- 	v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
- }
- 
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpu.c b/drivers/media/platform/chips-media/wave4/wave4-vpu.c
-index 28bc4972e..a0fe6e277 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpu.c
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpu.c
-@@ -35,6 +35,7 @@
- #define W4_INT_SET_PARAM_SEQ		BIT(1)
- #define W4_INT_PIC_RUN			BIT(3)
- #define W4_INT_QUERY			BIT(9)
-+#define W4_INT_BSBUF_FULL		BIT(15)
- #define W4_POLL_INTERVAL_MS		5
- /*
-  * Wave420L-specific capability map observed on SG2002:
-@@ -121,6 +122,10 @@ static void wave4_vpu_handle_irq(void *dev_id)
- 	 * when one bank holds stale non-PIC bits.
- 	 */
- 	irq_reason = irq_reason_usr | irq_reason_hw;
-+	if (irq_reason & W4_INT_BSBUF_FULL)
-+		dev_warn_ratelimited(dev->dev,
-+				     "encoder bitstream buffer full (reason=%#x)\n",
-+				     irq_reason);
- 	if (irq_reason)
- 		wave4_vdi_write_register(dev, W4_VPU_VINT_REASON_CLR, irq_reason);
- 	wave4_vdi_write_register(dev, W4_VPU_VINT_CLEAR, 0x1);
-diff --git a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-index 5fa310870..34db9255c 100644
---- a/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-+++ b/drivers/media/platform/chips-media/wave4/wave4-vpuapi.h
-@@ -514,6 +514,9 @@ struct enc_wave_param {
- 	s32 tc_offset_div2: 4; /* sets tc_offset_div3 for deblocking filter */
- 	u32 hvs_qp_scale: 4; /* QP scaling factor for CU QP adjust if hvs_qp_scale_enable is 1 */
- 	u32 hvs_max_delta_qp; /* maximum delta QP for HVS */
-+	u32 init_buf_level_x8; /* initial RC buffer fullness in eighths */
-+	u32 bit_alloc_mode; /* picture bit allocation mode */
-+	u32 trans_rate; /* peak transmission bitrate in bits per second */
- 	s32 chroma_cb_qp_offset; /* the value of chroma(cb) QP offset */
- 	s32 chroma_cr_qp_offset; /* the value of chroma(cr) QP offset */
- 	s32 initial_rc_qp;
-@@ -574,6 +577,7 @@ struct enc_open_param {
- 	u32 pic_height; /* height of a picture to be encoded in unit of sample */
- 	u32 frame_rate_info;/* desired fps */
- 	u32 vbv_buffer_size;
-+	u32 initial_delay; /* initial CPB removal delay in milliseconds */
- 	u32 bit_rate; /* target bitrate in bps */
- 	struct enc_wave_param wave_param;
- 	enum packed_format_num packed_format; /* <<vpuapi_h_packed_format_num>> */
 -- 
 2.50.0
 

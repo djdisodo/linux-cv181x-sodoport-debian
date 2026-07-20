@@ -1,3 +1,9 @@
+linux-cv181x-sodoport (7.1-7) trixie; urgency=medium
+
+  * Use hardware interrupts for Wave420L command and frame completion.
+
+ -- Packaging Maintainer <maintainer@example.com>  Mon, 20 Jul 2026 11:40:40 +0900
+
 linux-cv181x-sodoport (7.1-6) trixie; urgency=medium
 
   * Stabilize Wave420L CBR encoding under high-motion workloads.
